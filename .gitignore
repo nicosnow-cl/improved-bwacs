@@ -130,5 +130,5 @@ dmypy.json
 .pyre/
 
 # Files
-instances_results
+results
 *.png
