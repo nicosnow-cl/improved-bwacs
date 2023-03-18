@@ -1357,4 +1357,4 @@ class FreeBWACS:
             gb_solution_energies = ls_energies
 
         print('\n')
-        return sum(gb_solution_energies), sum(gb_solution_distances), time.time() - start_time
+        return sum(gb_solution_energies), gb_solution, sum(gb_solution_distances), time.time() - start_time
