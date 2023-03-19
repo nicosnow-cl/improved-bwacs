@@ -1,6 +1,3 @@
-NAME : A-n38-k5
-COMMENT : (Augerat et al, No of trucks: 5, Optimal value: 730)
-TYPE : CVRP
 DIMENSION : 38
 EDGE_WEIGHT_TYPE : EUC_2D 
 CAPACITY : 100
@@ -82,7 +79,4 @@ DEMAND_SECTION
 36 13 
 37 14 
 38 14 
-DEPOT_SECTION 
- 1  
- -1  
 EOF 

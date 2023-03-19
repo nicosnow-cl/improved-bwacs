@@ -1,6 +1,3 @@
-NAME : A-n63-k9
-COMMENT : (Augerat et al, No of trucks: 9, Optimal value: 1616)
-TYPE : CVRP
 DIMENSION : 63
 EDGE_WEIGHT_TYPE : EUC_2D 
 CAPACITY : 100
@@ -132,7 +129,4 @@ DEMAND_SECTION
 61 18 
 62 19 
 63 8 
-DEPOT_SECTION 
- 1  
- -1  
 EOF 

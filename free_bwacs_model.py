@@ -1063,7 +1063,8 @@ class FreeBWACS:
         if len(unassigned_nodes) > 0:
             print(
                 f'Ha ocurrido un ERROR: The following nodes are unassigned: {str(unassigned_nodes)}')
-            return None
+            raise Exception(
+                f'Ha ocurrido un ERROR: The following nodes are unassigned: {str(unassigned_nodes)}')
 
         if self.PRINT_CLUSTERS:
             print('    - Clusters draw:')
@@ -1126,7 +1127,7 @@ class FreeBWACS:
         # This variable controls when a reinitialization of the pheromone matrix should be done.
         stagnation = 0
         # In which iteration will the local search process begin?
-        start_local_search = int(self.MAX_ITERATIONS / 4)
+        start_local_search = int(self.MAX_ITERATIONS / 3)
 
         for iteration in range(self.MAX_ITERATIONS):
             print('\n    • Iteration ' + str(iteration + 1))
