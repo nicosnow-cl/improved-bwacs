@@ -778,6 +778,12 @@ class RestrictedBWACS:
         print('• INICIANDO CLUSTERIZACIÓN: \n')
         print('    > CLUSTER TYPE: ' + self.cluster_type.upper())
         self.clusters, clusters_total_cost, centers_list, unassigned_nodes = self.cluster_model.run()
+        if len(unassigned_nodes) > 0:
+            print(
+                f'Ha ocurrido un ERROR: The following nodes are unassigned: {str(unassigned_nodes)}')
+            raise Exception(
+                f'Ha ocurrido un ERROR: The following nodes are unassigned: {str(unassigned_nodes)}')
+
         print('    > CLUSTERS')
         for k in range(self.k_number):
             print('         - Cluster ' + str(k) + ': ' + str(self.clusters[k]) + ', con demanda final: '
@@ -948,4 +954,4 @@ class RestrictedBWACS:
             gb_clusters_energies = ls_energies
             gb_clusters_distances = ls_distances
 
-        return gb_clusters_energies.sum(), gb_clusters_distances.sum(), time.time() - start_time
+        return sum(gb_clusters_energies), gb_solution, sum(gb_clusters_distances), time.time() - start_time
