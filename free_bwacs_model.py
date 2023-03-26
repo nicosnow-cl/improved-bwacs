@@ -988,11 +988,10 @@ class FreeBWACS:
             self.printInstance()
 
         if self.MAX_ANTS > len(self.clients):
-            print('Ha ocurrido un ERROR: El número total de hormigas es de ' + str(self.MAX_ANTS)
-                  + ' y el número total de nodos clientes es de ' + str(len(self.clients)) + '.')
             print('Asegurese de definir un valor mayor para el parametro "TOTAL_ANT_DIVIDER", de tal'
                   + ' forma que el número total de hormigas sea igual o menor al número de nodos clientes.')
-            return None
+            raise Exception('Ha ocurrido un ERROR: El número total de hormigas es de ' + str(self.MAX_ANTS)
+                            + ' y el número total de nodos clientes es de ' + str(len(self.clients)) + '.')
 
         # Creation of the heuristics matrices.
         self.createDistancesMatrix()
