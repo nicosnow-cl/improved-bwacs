@@ -1,5 +1,6 @@
 from .free_bwacs_ls .local_variable_neighborhood_search import FreeLocalGVNS
 from .free_bwacs_ls .local_2opt_search import Free2OPTSearch
+from .free_bwacs_ls.variable_neighbordhood_search import GeneralVNS
 
 from .restricted_bwacs_ls .cluster_ls import BWACSClusterLS
 from .restricted_bwacs_ls .local_variable_neighborhood_search import RestrictedLocalGVNS
@@ -7,4 +8,3 @@ from .restricted_bwacs_ls .global_variable_neighborhood_search import Restricted
 
 from .kmeans_ls import KMeansLocalSearch
 from .kmedoids_ls import KMedoidsLocalSearch
-

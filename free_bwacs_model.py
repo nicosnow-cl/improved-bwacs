@@ -1,3 +1,6 @@
+from src.local_search import GeneralVNS
+
+
 class FreeAntEMVRP_1:
     def __init__(self, depot, nodes, start, combinations_matrix, distances_matrix, demands_array, vehicle_capacity, tare, start_ant_on_best_nodes, q0):
         import numpy as np
@@ -1238,15 +1241,26 @@ class FreeBWACS:
                 if iteration >= start_local_search:
                     # You can modify this statement. By this conditional statement we can choice between doing a LS to best iteration
                     # solution or do the LS to best global solution.
-                    if self.np.random.random(1)[0] < 0.8:
-                        local_search_model = FreeLocalGVNS(self.depot, cb_solution, self.np.array(cb_solution_energies), self.distances_matrix,
-                                                           self.demands_array, self.TARE, self.VEHICLE_CAPACITY, self.K_NUMBER, iteration + 1,
-                                                           self.MAX_ITERATIONS)
-                    else:
-                        local_search_model = FreeLocalGVNS(self.depot, gb_solution, self.np.array(gb_solution_energies), self.distances_matrix,
-                                                           self.demands_array, self.TARE, self.VEHICLE_CAPACITY, self.K_NUMBER, iteration + 1,
-                                                           self.MAX_ITERATIONS)
-                    ls_solution, ls_energies = local_search_model.improve()
+                    # if self.np.random.random(1)[0] < 0.8:
+                    #     local_search_model = FreeLocalGVNS(self.depot, cb_solution, self.np.array(cb_solution_energies), self.distances_matrix,
+                    #                                        self.demands_array, self.TARE, self.VEHICLE_CAPACITY, self.K_NUMBER, iteration + 1,
+                    #                                        self.MAX_ITERATIONS)
+                    # else:
+                    #     local_search_model = FreeLocalGVNS(self.depot, gb_solution, self.np.array(gb_solution_energies), self.distances_matrix,
+                    #                                        self.demands_array, self.TARE, self.VEHICLE_CAPACITY, self.K_NUMBER, iteration + 1,
+                    #                                        self.MAX_ITERATIONS)
+                    local_search_model = GeneralVNS(distances_matrix=self.distances_matrix,
+                                                    demands_arr=self.demands_array,
+                                                    tare=self.TARE,
+                                                    vehicle_capacity=self.VEHICLE_CAPACITY,
+                                                    k_number=self.K_NUMBER,
+                                                    max_iterations=self.MAX_ITERATIONS,
+                                                    )
+                    ls_solution, ls_energies = local_search_model.improve(
+                        cb_solution,
+                        iteration)
+
+                    print(f'LS solution: {ls_energies}')
 
                     # We save the LS solution if is better than the current best solution.
                     if ls_energies.sum() < cb_solution_quality:
@@ -1316,9 +1330,9 @@ class FreeBWACS:
                   ', with final total demand: ' + str(self.demands_array[route].sum()))
 
         print('        - Final total energy: ' +
-              str(sum(gb_solution_energies)))
+              str(gb_solution_energies.sum()))
         print('        - Final total distance: ' +
-              str(sum(gb_solution_distances)))
+              str(gb_solution_distances.sum()))
         print('        - Total time: %s seconds.' % (time.time() - start_time))
 
         if self.PRINT_SOLUTION:
