@@ -260,7 +260,7 @@ class FreeBWACS:
     '''
 
     '''
-         1.1 PRINT FUNCTIONS: 
+         1.1 PRINT FUNCTIONS:
          These functions allow the program to graph different models of the problem.
     '''
     # This function print all the nodes in a 2-D cartesian plane.
@@ -398,7 +398,7 @@ class FreeBWACS:
         display(HTML(pd_pheromones_matrix.to_html()))
 
     '''
-         1.1 MULTIPORPOUSE FUNCTIONS: 
+         1.1 MULTIPORPOUSE FUNCTIONS:
          These functions allow the program to resolve and determine a lot of problems and define values for variables.
     '''
     # Here we define some essential variables for the initialization of the ACO model.
@@ -718,7 +718,7 @@ class FreeBWACS:
         return candidate_list
 
     '''
-         1.2 Specific ACO model functions: 
+         1.2 Specific ACO model functions:
          These functions allow the program to resolve and determine a lot of problems and define values for variables.
     '''
     # Calculate the t_min, t_max and t_0 value.
@@ -791,20 +791,27 @@ class FreeBWACS:
         return solution_arcs
 
     # The objetive function of EMVRP.
+
     def calculateEnergies(self, solution):
         routes_energies = self.np.zeros(len(solution))
+
         for k, route in enumerate(solution):
             route_energy = 0
+            vehicle_weight = None
+            prev_node = None
+
             for pos, i in enumerate(route):
                 if pos == 0:
                     vehicle_weight = self.TARE
-                    before_node = i
                 else:
-                    route_energy += self.distances_matrix[before_node][i] * \
+                    route_energy += self.distances_matrix[prev_node][i] * \
                         vehicle_weight
                     vehicle_weight += self.demands_array[i]
-                    before_node = i
+
+                prev_node = i
+
             routes_energies[k] = route_energy
+
         return routes_energies
 
     # The objetive function of VRP.
@@ -1241,26 +1248,30 @@ class FreeBWACS:
                 if iteration >= start_local_search:
                     # You can modify this statement. By this conditional statement we can choice between doing a LS to best iteration
                     # solution or do the LS to best global solution.
-                    # if self.np.random.random(1)[0] < 0.8:
-                    #     local_search_model = FreeLocalGVNS(self.depot, cb_solution, self.np.array(cb_solution_energies), self.distances_matrix,
-                    #                                        self.demands_array, self.TARE, self.VEHICLE_CAPACITY, self.K_NUMBER, iteration + 1,
-                    #                                        self.MAX_ITERATIONS)
-                    # else:
-                    #     local_search_model = FreeLocalGVNS(self.depot, gb_solution, self.np.array(gb_solution_energies), self.distances_matrix,
-                    #                                        self.demands_array, self.TARE, self.VEHICLE_CAPACITY, self.K_NUMBER, iteration + 1,
-                    #                                        self.MAX_ITERATIONS)
-                    local_search_model = GeneralVNS(distances_matrix=self.distances_matrix,
-                                                    demands_arr=self.demands_array,
-                                                    tare=self.TARE,
-                                                    vehicle_capacity=self.VEHICLE_CAPACITY,
-                                                    k_number=self.K_NUMBER,
-                                                    max_iterations=self.MAX_ITERATIONS,
-                                                    )
-                    ls_solution, ls_energies = local_search_model.improve(
-                        cb_solution,
-                        iteration)
+                    if self.np.random.random(1)[0] < 0.8:
+                        local_search_model = FreeLocalGVNS(self.depot, cb_solution, self.np.array(cb_solution_energies), self.distances_matrix,
+                                                           self.demands_array, self.TARE, self.VEHICLE_CAPACITY, self.K_NUMBER, iteration + 1,
+                                                           self.MAX_ITERATIONS)
+                    else:
+                        local_search_model = FreeLocalGVNS(self.depot, gb_solution, self.np.array(gb_solution_energies), self.distances_matrix,
+                                                           self.demands_array, self.TARE, self.VEHICLE_CAPACITY, self.K_NUMBER, iteration + 1,
+                                                           self.MAX_ITERATIONS)
+                    ls_solution, ls_energies = local_search_model.improve()
 
-                    print(f'LS solution: {ls_energies}')
+                    # local_search_model = GeneralVNS(distances_matrix=self.distances_matrix,
+                    #                                 demands_array=self.demands_array,
+                    #                                 tare=self.TARE,
+                    #                                 vehicle_capacity=self.VEHICLE_CAPACITY,
+                    #                                 k_number=self.K_NUMBER,
+                    #                                 max_iterations=self.MAX_ITERATIONS,
+                    #                                 user_fitness_by_route=self.calculateEnergies
+                    #                                 )
+                    # ls_solution, ls_energies, ls_total_energy = local_search_model.improve(
+                    #     cb_solution,
+                    #     iteration)
+
+                    print(
+                        f'LS solution: {sum(ls_energies)}')
 
                     # We save the LS solution if is better than the current best solution.
                     if ls_energies.sum() < cb_solution_quality:
@@ -1285,7 +1296,7 @@ class FreeBWACS:
 
             # If the current best solution is better than the global best solution, we replace it.
             if cb_solution_quality < gb_solution_quality:
-                print('        + New best energy: ' + str(int(cb_solution_quality)) + ', with the next distance: '
+                print('        + New best energy: ' + str(int(sum(self.calculateEnergies(cb_solution)))) + ', with the next distance: '
                       + str(int(sum(self.calculateDistances(cb_solution)))))
                 gb_solution = self.deepcopy(cb_solution)
                 gb_solution_quality = cb_solution_quality
@@ -1324,15 +1335,20 @@ class FreeBWACS:
             self.pheromones_matrix[self.pheromones_matrix >
                                    self.t_max] = self.t_max
 
+        print(gb_solution_energies)
+        print(self.calculateEnergies(gb_solution))
+
         print('\n    • Global best routes:')
         for k, route in enumerate(gb_solution):
             print('        - Route ' + str(k) + ': ' + str(route) +
                   ', with final total demand: ' + str(self.demands_array[route].sum()))
 
         print('        - Final total energy: ' +
-              str(gb_solution_energies.sum()))
+              str(sum(gb_solution_energies)))
+        print(
+            f'        - Final total energy validated: {sum(self.calculateEnergies(gb_solution))}')
         print('        - Final total distance: ' +
-              str(gb_solution_distances.sum()))
+              str(sum(gb_solution_distances)))
         print('        - Total time: %s seconds.' % (time.time() - start_time))
 
         if self.PRINT_SOLUTION:
