@@ -35,9 +35,11 @@ class FreeAnt:
 
         return unvisited_nodes[next_vehicle_loads <= self.max_capacity]
 
-    def get_valid_nodes_sorted_by_distance(self, r, unvisited_nodes,
-                                           vehicle_weight):
-        valid_nodes = self.get_valid_nodes(unvisited_nodes, vehicle_weight)
+    def get_valid_nodes_sorted_by_distance(self,
+                                           r,
+                                           unvisited_nodes,
+                                           vehicle_load):
+        valid_nodes = self.get_valid_nodes(unvisited_nodes, vehicle_load)
 
         return valid_nodes[self.distances_matrix[r][valid_nodes].argsort()]
 
@@ -75,6 +77,9 @@ class FreeAnt:
                 energy,
                 remaining_unvisited_nodes,
                 vehicle_load)
+
+    def set_probabilities_matrix(self, probabilities_matrix):
+        self.probabilities_matrix = probabilities_matrix
 
     def generate_solution(self):
         solution = []
