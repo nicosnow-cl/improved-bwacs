@@ -7,27 +7,27 @@ from src.readers import ReaderCVRPLIB
 INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
 TARE_PERCENTAGE = 0.15
 ALPHA = 1
-BETA = 1
+BETA = 2
 
 
-def createCoordsMatrix(nodes, loc_x, loc_y):
+def create_coords_matrix(nodes, loc_x, loc_y):
     return np.array([(loc_x[i], loc_y[i]) for i in nodes])
 
 
-def createDistancesMatrix(nodes, coords_matrix, metric='euclidean'):
+def create_distances_matrix(nodes, coords_matrix, metric='euclidean'):
     distances_matrix = np.zeros((len(nodes), len(nodes)))
-    _ord = 1 if metric == 'manhattan' else 2
+    l_norm = 1 if metric == 'manhattan' else 2
 
     for i in nodes:
         for j in nodes:
             if i != j:
                 distances_matrix[i][j] = np.linalg.norm(
-                    coords_matrix[i] - coords_matrix[j], ord=_ord)
+                    coords_matrix[i] - coords_matrix[j], ord=l_norm)
 
     return distances_matrix
 
 
-def createEnergiesMatrix(nodes, depot, tare, distances_matrix, demands_array):
+def create_energies_matrix(nodes, depot, tare, distances_matrix, demands_array):
     energies_matrix = np.zeros((len(nodes), len(nodes)))
 
     for i in nodes:
@@ -40,15 +40,20 @@ def createEnergiesMatrix(nodes, depot, tare, distances_matrix, demands_array):
     return energies_matrix
 
 
-def createPheronomesMatrix(nodes, base_matrix=None):
-    # pheromones_matrix = np.full((len(nodes), len(nodes)), random.random())
+def create_pheromones_matrix(nodes, base_matrix=None):
     t_min, t_max = 0, 1
+
     if base_matrix is not None:
         t_min, t_max = np.min(base_matrix[base_matrix != 0]), np.max(
             base_matrix[base_matrix != np.inf])
 
-    pheromones_matrix = np.random.uniform(
-        low=t_min, high=t_max, size=(len(nodes), len(nodes)))
+    # pheromones_matrix = np.random.uniform(low=t_min, high=t_max,
+    #                                       size=(len(nodes), len(nodes)))
+
+    pheromones_matrix = np.random.uniform(low=t_min, high=t_min,
+                                          size=(len(nodes), len(nodes)))
+
+    # pheromones_matrix = np.zeros((len(nodes), len(nodes)))
 
     # for cluster in self.clusters:
     #     cluster_arcs = list(self.permutations(cluster, 2))
@@ -83,21 +88,22 @@ def generate_solution_arcs(solution):
     return solution_arcs
 
 
-def update_pheromones_matrix(solution, pheromones_matrix, t_min, t_max,
-                             quality=None,
-                             p=0.02):
+def get_updated_pheromones_matrix(solution, pheromones_matrix, t_min, t_max,
+                                  quality=None,
+                                  p=0.02):
     solution_arcs = generate_solution_arcs(solution)
 
     evaporation_rate = (1 - p)
     new_pheromones_matrix = np.multiply(pheromones_matrix, evaporation_rate)
-    new_pheromones_matrix[new_pheromones_matrix < 0] = t_min
+    # new_pheromones_matrix[new_pheromones_matrix < t_min] = t_min
 
     for route_arcs in solution_arcs:
         for i, j in route_arcs:
             new_pheromones_matrix[i][j] += quality if quality \
                 is not None else t_max * evaporation_rate
 
-    new_pheromones_matrix[new_pheromones_matrix > t_max] = t_max
+    # new_pheromones_matrix[new_pheromones_matrix > t_max] = t_max
+
     return new_pheromones_matrix
 
 
@@ -108,18 +114,20 @@ depot, clients, loc_x, loc_y, demands, total_demand, vehicle_load, k, \
 tare = vehicle_load * TARE_PERCENTAGE
 nodes = np.array([depot] + clients)
 demands_array = np.array([demands[node] for node in demands])
-coords_matrix = createCoordsMatrix(nodes, loc_x, loc_y)
-distances_matrix = createDistancesMatrix(nodes, coords_matrix)
-energies_matrix = createEnergiesMatrix(
-    nodes, depot, tare, distances_matrix, demands_array)
+coords_matrix = create_coords_matrix(nodes, loc_x, loc_y)
+distances_matrix = create_distances_matrix(nodes, coords_matrix)
+energies_matrix = create_energies_matrix(nodes, depot, tare, distances_matrix,
+                                         demands_array)
 normalized_distances_matrix = np.divide(1, distances_matrix)
 normalized_energies_matrix = np.divide(1, energies_matrix)
-pheromones_matrix, t_min, t_max = createPheronomesMatrix(
-    nodes, normalized_energies_matrix)
+pheromones_matrix, t_min, t_max = create_pheromones_matrix(
+    nodes, normalized_distances_matrix)
 probabilities_matrix = np.multiply(np.power(pheromones_matrix, ALPHA),
-                                   np.power(normalized_energies_matrix, BETA))
+                                   np.power(normalized_distances_matrix, BETA))
 
-MAX_ITERATIONS = 200
+
+MAX_ITERATIONS = 100
+ANT_COUNT = 100
 BEST_SOLUTIONS = []
 
 ant = FreeAnt(nodes, demands_array, vehicle_load, tare,
@@ -130,41 +138,40 @@ for i in range(MAX_ITERATIONS):
     print(f'Iteration {i + 1}')
     iterations_solutions = []
 
-    for j in range(50):
-        solution, energies, loads = ant.generate_solution()
+    for j in range(ANT_COUNT):
+        solution, costs, loads = ant.generate_solution()
         iterations_solutions.append({'solution': solution,
-                                     'energies': energies, 'loads': loads})
+                                     'costs': costs, 'loads': loads})
 
-        # new_pheromones_matrix = update_pheromones_matrix(
-        #     solution,
-        #     pheromones_matrix,
-        #     t_min,
-        #     t_max,
-        #     get_solution_quality(energies),
-        #     0.1)
+        pheromones_matrix = get_updated_pheromones_matrix(solution,
+                                                          pheromones_matrix,
+                                                          t_min,
+                                                          t_max,
+                                                          get_solution_quality(
+                                                              costs),
+                                                          0.02)
 
-        # ant.set_probabilities_matrix(np.multiply(
-        #     np.power(new_pheromones_matrix, ALPHA),
-        #     np.power(normalized_energies_matrix, BETA)))
+        ant.set_probabilities_matrix(np.multiply(
+            np.power(pheromones_matrix, ALPHA),
+            np.power(normalized_distances_matrix, BETA)))
 
     print(
         '    > Mean solutions quality: ' +
-        str(np.average([sum(solution["energies"]) for solution in
+        str(np.average([sum(solution["costs"]) for solution in
                         iterations_solutions])))
 
     iteration_best_solution = sorted(iterations_solutions, key=lambda d: sum(
-        d["energies"]) and (len(d["solution"]) <= k))[0]
+        d["costs"]) and (len(d["solution"]) <= k))[0]
 
-    new_pheromones_matrix = update_pheromones_matrix(
-        iteration_best_solution["solution"],
-        pheromones_matrix,
-        t_min,
-        t_max,
-        get_solution_quality(iteration_best_solution["energies"]))
+    # pheromones_matrix = get_updated_pheromones_matrix(iteration_best_solution["solution"],
+    #     pheromones_matrix,
+    #     t_min,
+    #     t_max,
+    #     get_solution_quality(iteration_best_solution["costs"]))
 
-    ant.set_probabilities_matrix(np.multiply(
-        np.power(new_pheromones_matrix, ALPHA),
-        np.power(normalized_energies_matrix, BETA)))
+    # ant.set_probabilities_matrix(np.multiply(
+    #     np.power(pheromones_matrix, ALPHA),
+    #     np.power(normalized_distances_matrix, BETA)))
 
     BEST_SOLUTIONS.append(iteration_best_solution)
 
@@ -173,4 +180,4 @@ time_elapsed = final_time - start_time
 
 print(f'Time elapsed: {time_elapsed}')
 print(
-    f'Best 5 solutions: {[(sum(ant_solution["energies"]), len(ant_solution["solution"])) for ant_solution in sorted(BEST_SOLUTIONS, key=lambda d: sum(d["energies"]))][:5]}')
+    f'Best 5 solutions: {[(sum(ant_solution["costs"]), len(ant_solution["solution"])) for ant_solution in sorted(BEST_SOLUTIONS, key=lambda d: sum(d["costs"]))][:5]}')
