@@ -20,7 +20,7 @@ class FreeAnt:
 
         q = random.random()
 
-        if q <= self.q0:
+        if q >= self.q0:
             return valid_nodes[probabilites_of_nodes.argmax()]
         else:
             # THIS APPROACH IS TOO SLOW
@@ -28,11 +28,12 @@ class FreeAnt:
             #     probabilites_of_nodes, probabilites_of_nodes.sum())
             # return np.random.choice(valid_nodes, 1, p=probabilities)[0]
 
-            # cumsum = np.cumsum(probabilites_of_nodes)
-            # return random.choices(valid_nodes, cum_weights=cumsum, k=1)[0]
+            # THIS APPROACH GIVE US WORST RESULTS
+            # return random.choices(valid_nodes, weights=probabilites_of_nodes,
+            #                       k=1)[0]
 
-            return random.choices(valid_nodes, weights=probabilites_of_nodes,
-                                  k=1)[0]
+            cumsum = np.cumsum(probabilites_of_nodes)
+            return random.choices(valid_nodes, cum_weights=cumsum, k=1)[0]
 
     def get_valid_nodes(self, unvisited_nodes, vehicle_load):
         next_vehicle_loads = vehicle_load + self.demands[unvisited_nodes]

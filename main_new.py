@@ -1,3 +1,4 @@
+import random
 import numpy as np
 import time
 
@@ -27,7 +28,11 @@ def create_distances_matrix(nodes, coords_matrix, metric='euclidean'):
     return distances_matrix
 
 
-def create_energies_matrix(nodes, depot, tare, distances_matrix, demands_array):
+def create_energies_matrix(nodes,
+                           depot,
+                           tare,
+                           distances_matrix,
+                           demands_array):
     energies_matrix = np.zeros((len(nodes), len(nodes)))
 
     for i in nodes:
@@ -40,34 +45,25 @@ def create_energies_matrix(nodes, depot, tare, distances_matrix, demands_array):
     return energies_matrix
 
 
-def create_pheromones_matrix(nodes, base_matrix=None):
-    t_min, t_max = 0, 1
-
-    if base_matrix is not None:
-        t_min, t_max = np.min(base_matrix[base_matrix != 0]), np.max(
-            base_matrix[base_matrix != np.inf])
-
-    # pheromones_matrix = np.random.uniform(low=t_min, high=t_max,
-    #                                       size=(len(nodes), len(nodes)))
-
-    pheromones_matrix = np.random.uniform(low=t_min, high=t_min,
-                                          size=(len(nodes), len(nodes)))
-
-    # pheromones_matrix = np.zeros((len(nodes), len(nodes)))
-
-    # for cluster in self.clusters:
-    #     cluster_arcs = list(self.permutations(cluster, 2))
-    #     print(cluster_arcs)
-    #     for i, j in cluster_arcs:
-    #         # self.pheromones_matrix[i][j] = (self.t_max / 2) * 1.25
-    #         self.pheromones_matrix[i][j] = self.t_max
-
-    return pheromones_matrix, t_min, t_max
+def create_simple_pheromones_matrix(nodes):
+    return np.full((len(nodes), len(nodes)), 1)
 
 
-def get_solution_quality(solution_energies):
+def create_initial_pheromones_matrix(nodes, greedy_quality):
+    total_clients = len(nodes) - 1
+    t_delta = total_clients / greedy_quality
+    t_min = t_delta / total_clients
+    # t_max = t_delta * total_clients
+    t_max = 1
+
+    pheromones_matrix = np.full((len(nodes), len(nodes)), t_delta)
+
+    return pheromones_matrix, t_delta, t_min, t_max
+
+
+def get_solution_quality(solution_costs):
     # print(format(1 / sum(solution_energies), '.50f'))
-    return 1 / sum(solution_energies)
+    return 1 / sum(solution_costs)
 
 
 def generate_solution_arcs(solution):
@@ -88,17 +84,17 @@ def generate_solution_arcs(solution):
     return solution_arcs
 
 
-def get_evaporated_pheromones_matrix(pheromones_matrix, p=0.02):
+def get_evaporated_pheromones_matrix(pheromones_matrix, t_min,  p=0.2):
     evaporation_rate = (1 - p)
-    evaporated_pheromones_matrix = np.multiply(
-        pheromones_matrix, evaporation_rate)
-    # new_pheromones_matrix[new_pheromones_matrix < t_min] = t_min
+    evaporated_pheromones_matrix = np.multiply(pheromones_matrix,
+                                               evaporation_rate)
+    # evaporated_pheromones_matrix[evaporated_pheromones_matrix < t_min] = t_min
 
     return evaporated_pheromones_matrix
 
 
 def get_increased_pheromones_matrix(pheromones_matrix, global_best_solution,
-                                    global_best_costs):
+                                    global_best_costs, t_max):
     global_best_solution_arcs = generate_solution_arcs(global_best_solution)
     global_best_solution_quality = get_solution_quality(global_best_costs)
 
@@ -108,11 +104,13 @@ def get_increased_pheromones_matrix(pheromones_matrix, global_best_solution,
         for i, j in route_arcs:
             increased_pheromones_matrix[i][j] += global_best_solution_quality
 
+    increased_pheromones_matrix[increased_pheromones_matrix > t_max] = t_max
+
     return increased_pheromones_matrix
 
 
 def get_decreased_phermones_matrix(pheromones_matrix, global_best_solution,
-                                   current_worst_solution, p=0.02):
+                                   current_worst_solution, t_min, p=0.2):
     evaporation_rate = (1 - p)
     global_best_solution_arcs = generate_solution_arcs(global_best_solution)
     current_worst_solution_arcs = generate_solution_arcs(
@@ -125,14 +123,67 @@ def get_decreased_phermones_matrix(pheromones_matrix, global_best_solution,
             if (i, j) not in current_worst_solution_arcs:
                 decreased_pheromones_matrix[i][j] *= evaporation_rate
 
+    # decreased_pheromones_matrix[decreased_pheromones_matrix < t_min] = t_min
+
     return decreased_pheromones_matrix
 
 
+def get_mutated_pheromones_matrix(pheromones_matrix,
+                                  global_best_solution,
+                                  current_iteration,
+                                  iteration_when_do_restart,
+                                  max_iterations,
+                                  t_min,
+                                  delta=4,
+                                  p_m=0.3):
+    mutation_intensity = get_mutation_intensity(current_iteration,
+                                                iteration_when_do_restart,
+                                                max_iterations,
+                                                delta)
+    t_threshold = get_t_threshold(pheromones_matrix, global_best_solution)
+    mutation_value = mutation_intensity * t_threshold
+
+    mutated_pheromones_matrix = pheromones_matrix.copy()
+
+    for i in range(pheromones_matrix.shape[0]):
+        _ = random.random()
+        if _ <= p_m:
+            a = random.randint(0, 1)
+
+            if a == 1:
+                mutated_pheromones_matrix[i] += mutation_value
+            else:
+                mutated_pheromones_matrix[i] -= mutation_value
+
+    mutated_pheromones_matrix[mutated_pheromones_matrix < t_min] = t_min
+
+    return mutated_pheromones_matrix
+
+
+def get_mutation_intensity(current_iteration,
+                           iteration_when_do_restart,
+                           max_iterations,
+                           delta):
+    return ((current_iteration - iteration_when_do_restart) /
+            (max_iterations - iteration_when_do_restart)) * delta
+
+
+def get_t_threshold(pheromones_matrix, global_best_solution):
+    global_best_solution_arcs = generate_solution_arcs(global_best_solution)
+    pheromones = []
+
+    for route_arcs in global_best_solution_arcs:
+        for i, j in route_arcs:
+            pheromones.append(pheromones_matrix[i][j])
+
+    return sum(pheromones) / len(pheromones)
+
+
 reader = ReaderCVRPLIB(INSTANCE)
-depot, clients, loc_x, loc_y, demands, total_demand, vehicle_load, k, \
+depot, clients, loc_x, loc_y, demands, total_demand, max_capacity, k, \
     tightness_ratio = reader.read()
 
-tare = vehicle_load * TARE_PERCENTAGE
+tare = max_capacity * TARE_PERCENTAGE
 nodes = np.array([depot] + clients)
 demands_array = np.array([demands[node] for node in demands])
 coords_matrix = create_coords_matrix(nodes, loc_x, loc_y)
@@ -141,18 +192,38 @@ energies_matrix = create_energies_matrix(nodes, depot, tare, distances_matrix,
                                          demands_array)
 normalized_distances_matrix = np.divide(1, distances_matrix)
 normalized_energies_matrix = np.divide(1, energies_matrix)
-pheromones_matrix, t_min, t_max = create_pheromones_matrix(
-    nodes, normalized_distances_matrix)
+
+
+MAX_ITERATIONS = 100
+ANT_COUNT = 50
+BEST_SOLUTIONS = []
+P = 0.2
+q0 = 0.8
+
+simple_pheromones_matrix = create_simple_pheromones_matrix(nodes)
+simple_probabilities_matrix = np.multiply(np.power(simple_pheromones_matrix,
+                                                   ALPHA),
+                                          np.power(normalized_distances_matrix,
+                                                   BETA))
+greedy_ant = FreeAnt(nodes, demands_array, max_capacity, tare,
+                     distances_matrix, simple_probabilities_matrix, q0)
+
+GREEDY_SOLUTION = None
+for i in range(ANT_COUNT):
+    greedy_solution, greedy_costs, greedy_load = greedy_ant.generate_solution()
+    if GREEDY_SOLUTION is None or sum(greedy_costs) < sum(
+            GREEDY_SOLUTION[1]):
+        GREEDY_SOLUTION = (greedy_solution, greedy_costs, greedy_load)
+
+
+pheromones_matrix, t_delta, t_min, t_max = create_initial_pheromones_matrix(
+    nodes, sum(GREEDY_SOLUTION[1]))
 probabilities_matrix = np.multiply(np.power(pheromones_matrix, ALPHA),
                                    np.power(normalized_distances_matrix, BETA))
 
 
-MAX_ITERATIONS = 200
-ANT_COUNT = 50
-BEST_SOLUTIONS = []
-
-ant = FreeAnt(nodes, demands_array, vehicle_load, tare,
-              distances_matrix, probabilities_matrix, 0.2)
+ant = FreeAnt(nodes, demands_array, max_capacity, tare,
+              distances_matrix, probabilities_matrix, q0)
 
 start_time = time.time()
 for i in range(MAX_ITERATIONS):
@@ -176,24 +247,31 @@ for i in range(MAX_ITERATIONS):
     iteration_worst_solution = iteration_solutions_sorted[-1]
 
     pheromones_matrix = get_evaporated_pheromones_matrix(
-        pheromones_matrix, 0.2)
+        pheromones_matrix, t_min, P)
     pheromones_matrix = get_increased_pheromones_matrix(
         pheromones_matrix,
         global_best_solution[0],
-        global_best_solution[1])
+        global_best_solution[1],
+        t_max)
     pheromones_matrix = get_decreased_phermones_matrix(
         pheromones_matrix,
         global_best_solution[0],
         iteration_worst_solution[0],
-        0.2)
+        t_min,
+        P)
+    # pheromones_matrix = get_mutated_pheromones_matrix(pheromones_matrix,
+    #                                                   global_best_solution[0],
+    #                                                   i,
+    #                                                   0,
+    #                                                   MAX_ITERATIONS,
+    #                                                   t_min)
 
     ant.set_probabilities_matrix(np.multiply(
         np.power(pheromones_matrix, ALPHA),
         np.power(normalized_distances_matrix, BETA)))
 
     BEST_SOLUTIONS.append(best_iteration_solution)
-    print(BEST_SOLUTIONS)
-    BEST_SOLUTIONS = sorted(set(BEST_SOLUTIONS), key=lambda d: sum(d[1]))
+    BEST_SOLUTIONS = sorted(BEST_SOLUTIONS, key=lambda d: sum(d[1]))
 
 
 final_time = time.time()
