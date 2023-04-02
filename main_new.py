@@ -48,8 +48,7 @@ def create_initial_pheromones_matrix(nodes, greedy_quality):
     total_clients = len(nodes)
     t_delta = total_clients / greedy_quality
     t_min = t_delta ** total_clients
-    # t_max = t_delta * total_clients
-    t_max = 1
+    t_max = t_delta * total_clients
 
     pheromones_matrix = np.full((len(nodes), len(nodes)), t_delta)
 
@@ -87,15 +86,11 @@ def generate_plain_solution_arcs(solution):
 
 def get_evaporated_pheromones_matrix(pheromones_matrix, t_min,  p=0.2):
     evaporation_rate = (1 - p)
-    # avg_evap_rate = pheromones_matrix.mean() - pheromones_matrix.mean() * \
-    #     evaporation_rate
-    # print('AVG_EVAP_RATE: ' + str(format(avg_evap_rate, '.50f')))
 
     evaporated_pheromones_matrix = np.multiply(pheromones_matrix,
                                                evaporation_rate)
 
     evaporated_pheromones_matrix[evaporated_pheromones_matrix < t_min] = t_min
-    # evaporated_pheromones_matrix[evaporated_pheromones_matrix < 0] = 0
 
     return evaporated_pheromones_matrix
 
@@ -105,22 +100,19 @@ def get_increased_pheromones_matrix(pheromones_matrix, global_best_solution,
     global_best_solution_quality = get_solution_quality(global_best_costs)
     plain_global_best_solution_arcs = generate_plain_solution_arcs(
         global_best_solution)
-    # print('GB_AMOUNT: ' + str(global_best_solution_quality))
-    # print('PH_MATRIX_MAX: ' + str(pheromones_matrix.max()))
 
     increased_pheromones_matrix = pheromones_matrix.copy()
 
     for i, j in plain_global_best_solution_arcs:
-        # increased_pheromones_matrix[i][j] += global_best_solution_quality
         increased_pheromones_matrix[i][j] += global_best_solution_quality
 
-    # increased_pheromones_matrix[increased_pheromones_matrix > t_max] = t_max
+    increased_pheromones_matrix[increased_pheromones_matrix > t_max] = t_max
 
     return increased_pheromones_matrix
 
 
-def get_decreased_phermones_matrix(pheromones_matrix, global_best_solution,
-                                   current_worst_solution, t_min, p=0.2):
+def get_decreased_pheromones_matrix(pheromones_matrix, global_best_solution,
+                                    current_worst_solution, t_min, p=0.2):
     evaporation_rate = (1 - p)
     plain_global_best_solution_arcs = generate_plain_solution_arcs(
         global_best_solution)
@@ -234,7 +226,7 @@ ANT_COUNT = 25
 BEST_SOLUTIONS = []
 P = 0.2
 q0 = 0.8
-SIMILARITY_PERCENTAGE_TO_DO_RESTART = 50
+SIMILARITY_PERCENTAGE_TO_DO_RESTART = 40
 
 tare = max_capacity * TARE_PERCENTAGE
 nodes = np.array([depot] + clients)
@@ -312,22 +304,22 @@ for i in range(MAX_ITERATIONS):
         global_best_solution[0],
         global_best_solution[1],
         t_max)
-    pheromones_matrix = get_decreased_phermones_matrix(
+    pheromones_matrix = get_decreased_pheromones_matrix(
         pheromones_matrix,
         global_best_solution[0],
         iteration_worst_solution[0],
         t_min,
         P)
 
-    if (iteration_when_do_restart != 0):
-        pheromones_matrix = get_mutated_pheromones_matrix(
-            pheromones_matrix,
-            global_best_solution[0],
-            i,
-            iteration_when_do_restart,
-            MAX_ITERATIONS,
-            t_min,
-            t_threshold=get_solution_quality(global_best_solution[1]))
+    # if (iteration_when_do_restart != 0):
+    #     pheromones_matrix = get_mutated_pheromones_matrix(
+    #         pheromones_matrix,
+    #         global_best_solution[0],
+    #         i,
+    #         iteration_when_do_restart,
+    #         MAX_ITERATIONS,
+    #         t_min,
+    #         t_threshold=get_solution_quality(global_best_solution[1]))
 
     reach_stagnation = check_stagnation(
         best_iteration_solution[0],
