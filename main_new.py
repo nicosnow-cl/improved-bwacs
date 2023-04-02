@@ -47,8 +47,8 @@ def create_simple_pheromones_matrix(nodes):
 def create_initial_pheromones_matrix(nodes, greedy_quality):
     total_clients = len(nodes)
     t_delta = total_clients / greedy_quality
-    t_min = t_delta ** total_clients
-    t_max = t_delta * total_clients
+    t_min = t_delta ** (total_clients / 2)
+    t_max = t_delta * (total_clients / 2)
 
     pheromones_matrix = np.full((len(nodes), len(nodes)), t_delta)
 
@@ -136,8 +136,9 @@ def get_mutated_pheromones_matrix(pheromones_matrix,
                                   iteration_when_do_restart,
                                   max_iterations,
                                   t_min,
+                                  t_max,
                                   t_threshold=None,
-                                  delta=4,
+                                  delta=2,
                                   p_m=0.3):
     mutation_intensity = get_mutation_intensity(current_iteration,
                                                 iteration_when_do_restart,
@@ -148,7 +149,7 @@ def get_mutated_pheromones_matrix(pheromones_matrix,
         pheromones_matrix, global_best_solution)
     mutation_value = mutation_intensity * \
         (t_threshold if t_threshold is not None else default_t_threshold) \
-        * 0.01
+        * 0.005
 
     mutated_pheromones_matrix = pheromones_matrix.copy()
     nodes = range(pheromones_matrix.shape[0])
@@ -164,7 +165,7 @@ def get_mutated_pheromones_matrix(pheromones_matrix,
                     mutated_pheromones_matrix[i][j] -= mutation_value
 
     mutated_pheromones_matrix[mutated_pheromones_matrix < t_min] = t_min
-    mutated_pheromones_matrix[mutated_pheromones_matrix > 1] = 1
+    mutated_pheromones_matrix[mutated_pheromones_matrix > t_max] = t_max
 
     return mutated_pheromones_matrix
 
@@ -185,8 +186,6 @@ def get_t_threshold(pheromones_matrix, global_best_solution):
     for i, j in plain_global_best_solution_arcs:
         pheromones.append(pheromones_matrix[i][j])
 
-    # return sum(pheromones) / len(pheromones)
-    # print('threshold: ' + str(np.mean(pheromones)))
     return np.average(pheromones)
 
 
@@ -213,6 +212,8 @@ def check_stagnation(iteration_best_solution,
 
 
 INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
+# INSTANCE = 'instances/CVRPLIB/Golden/Golden_1'
+# INSTANCE = 'instances/TSPLIB/Eil51/eil51.tsp'
 
 reader = ReaderCVRPLIB(INSTANCE)
 depot, clients, loc_x, loc_y, demands, total_demand, max_capacity, k, \
@@ -226,7 +227,7 @@ ANT_COUNT = 25
 BEST_SOLUTIONS = []
 P = 0.2
 q0 = 0.8
-SIMILARITY_PERCENTAGE_TO_DO_RESTART = 40
+SIMILARITY_PERCENTAGE_TO_DO_RESTART = 60
 
 tare = max_capacity * TARE_PERCENTAGE
 nodes = np.array([depot] + clients)
@@ -263,11 +264,12 @@ probabilities_matrix = np.multiply(np.power(pheromones_matrix, ALPHA),
 
 ant = FreeAnt(nodes, demands_array, max_capacity, tare,
               distances_matrix, probabilities_matrix, q0)
-iteration_when_do_restart = 0
+last_iteration_when_do_restart = 0
 
 start_time = time.time()
 for i in range(MAX_ITERATIONS):
     print(f'Iteration {i + 1}')
+
     iterations_solutions = []
     reach_stagnation = False
 
@@ -275,27 +277,23 @@ for i in range(MAX_ITERATIONS):
         solution, costs, load = ant.generate_solution()
         iterations_solutions.append(list((solution, costs, load)))
 
-    best_iteration_solution = min(
-        iterations_solutions, key=lambda d: sum(d[1]))
-    worst_iteraion_solution = max(
-        iterations_solutions, key=lambda d: sum(d[1]))
-    average_iteration_solution = np.average([sum(solution[1]) for solution in
-                                             iterations_solutions])
+    iterations_solutions_sorted = sorted(iterations_solutions,
+                                         key=lambda d: sum(d[1]))
+    iterations_solutions_sorted_and_restricted = [
+        solution for solution in iterations_solutions_sorted
+        if len(solution[0]) == k]
+
+    iteration_best_solution = iterations_solutions_sorted_and_restricted[0]
+    iteration_worst_solution = iterations_solutions_sorted[-1]
+    average_iteration_costs = np.average([sum(solution[1]) for solution in
+                                          iterations_solutions_sorted])
+    global_best_solution = iteration_best_solution if len(
+        BEST_SOLUTIONS) == 0 else BEST_SOLUTIONS[0]
 
     print('    > Iteration resoluts: BEST({}), WORST({}), AVG({})'
-          .format(sum(best_iteration_solution[1]),
-                  sum(worst_iteraion_solution[1]),
-                  average_iteration_solution))
-
-    iteration_solutions_sorted = sorted(
-        iterations_solutions,
-        key=lambda d: sum(d[1]) and (len(d[0]) == k))
-    best_iteration_solution = iteration_solutions_sorted[0]
-    global_best_solution = best_iteration_solution if len(
-        BEST_SOLUTIONS) == 0 else BEST_SOLUTIONS[0]
-    iteration_worst_solution = sorted(
-        iterations_solutions,
-        key=lambda d: sum(d[1]))[-1]
+          .format(sum(iteration_best_solution[1]),
+                  sum(iteration_worst_solution[1]),
+                  average_iteration_costs))
 
     pheromones_matrix = get_evaporated_pheromones_matrix(
         pheromones_matrix, t_min, P)
@@ -311,32 +309,52 @@ for i in range(MAX_ITERATIONS):
         t_min,
         P)
 
-    # if (iteration_when_do_restart != 0):
-    #     pheromones_matrix = get_mutated_pheromones_matrix(
-    #         pheromones_matrix,
-    #         global_best_solution[0],
-    #         i,
-    #         iteration_when_do_restart,
-    #         MAX_ITERATIONS,
-    #         t_min,
-    #         t_threshold=get_solution_quality(global_best_solution[1]))
+    if (last_iteration_when_do_restart != 0):
+        pheromones_matrix = get_mutated_pheromones_matrix(
+            pheromones_matrix,
+            global_best_solution[0],
+            i,
+            last_iteration_when_do_restart,
+            MAX_ITERATIONS,
+            t_min,
+            t_max,
+            # t_threshold=get_solution_quality(global_best_solution[1])
+        )
 
     reach_stagnation = check_stagnation(
-        best_iteration_solution[0],
+        iteration_best_solution[0],
         iteration_worst_solution[0],
         SIMILARITY_PERCENTAGE_TO_DO_RESTART)
 
     if reach_stagnation:
         print('    > Stagnation detected!')
-        iteration_when_do_restart = i
+        last_iteration_when_do_restart = i
         pheromones_matrix = BASE_PHEROMONES_MATRIX.copy()
 
     ant.set_probabilities_matrix(np.multiply(
         np.power(pheromones_matrix, ALPHA),
         np.power(normalized_distances_matrix, BETA)))
 
-    BEST_SOLUTIONS.append(best_iteration_solution)
-    BEST_SOLUTIONS = sorted(BEST_SOLUTIONS, key=lambda d: sum(d[1]))
+    if i == 0:
+        BEST_SOLUTIONS.append(iteration_best_solution)
+    else:
+        tuple_iteratin_best_solution = [
+            tuple(route) for route in iteration_best_solution[0]]
+        is_solution_already_stored = False
+
+        for solution in BEST_SOLUTIONS:
+            tuple_solution = [
+                tuple(route) for route in solution[0]]
+            different_routes = set(tuple_solution) - \
+                set(tuple_iteratin_best_solution)
+
+            if len(different_routes) == 0:
+                is_solution_already_stored = True
+                break
+
+        if not is_solution_already_stored:
+            BEST_SOLUTIONS.append(iteration_best_solution)
+            BEST_SOLUTIONS = sorted(BEST_SOLUTIONS, key=lambda d: sum(d[1]))
 
 
 final_time = time.time()
@@ -347,5 +365,5 @@ print('Best 5 solutions: {}'
       .format([(sum(ant_solution[1]), len(ant_solution[0]), ant_solution[2])
                for ant_solution in sorted(BEST_SOLUTIONS,
                                           key=lambda d: sum(d[1]))][:5]))
-if iteration_when_do_restart > 0:
-    print(f'Last iteration when do restart: {iteration_when_do_restart}')
+if last_iteration_when_do_restart > 0:
+    print(f'Last iteration when do restart: {last_iteration_when_do_restart}')
