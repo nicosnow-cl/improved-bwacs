@@ -223,12 +223,12 @@ depot, clients, loc_x, loc_y, demands, total_demand, max_capacity, k, \
 TARE_PERCENTAGE = 0.15
 ALPHA = 1
 BETA = 2
-MAX_ITERATIONS = 300
+MAX_ITERATIONS = 250
 ANT_COUNT = 25
 BEST_SOLUTIONS = []
 P = 0.2
 q0 = 0.8
-SIMILARITY_PERCENTAGE_TO_DO_RESTART = 60
+SIMILARITY_PERCENTAGE_TO_DO_RESTART = 50
 
 tare = max_capacity * TARE_PERCENTAGE
 nodes = np.array([depot] + clients)
@@ -269,6 +269,7 @@ local_search = GeneralVNS(distances_matrix, demands_array,
                           tare, max_capacity, k, MAX_ITERATIONS)
 
 last_iteration_when_do_restart = 0
+candidate_starting_nodes = None
 
 start_time = time.time()
 for i in range(MAX_ITERATIONS):
@@ -278,6 +279,9 @@ for i in range(MAX_ITERATIONS):
     reach_stagnation = False
 
     for j in range(ANT_COUNT):
+        if candidate_starting_nodes is not None:
+            ant.set_best_start_nodes(candidate_starting_nodes.copy())
+
         solution, costs, load = ant.generate_solution()
         iterations_solutions.append(list((solution, costs, load)))
 
@@ -287,7 +291,9 @@ for i in range(MAX_ITERATIONS):
         solution for solution in iterations_solutions_sorted
         if len(solution[0]) == k]
 
-    iteration_best_solution = iterations_solutions_sorted_and_restricted[0]
+    iteration_best_solution = iterations_solutions_sorted_and_restricted[0] \
+        if len(iterations_solutions_sorted_and_restricted) > 0 else \
+        iterations_solutions_sorted[0]
     iteration_worst_solution = iterations_solutions_sorted[-1]
     average_iteration_costs = np.average([sum(solution[1]) for solution in
                                           iterations_solutions_sorted])
@@ -365,6 +371,15 @@ for i in range(MAX_ITERATIONS):
         if not is_solution_already_stored:
             BEST_SOLUTIONS.append(iteration_best_solution)
             BEST_SOLUTIONS = sorted(BEST_SOLUTIONS, key=lambda d: sum(d[1]))
+
+    # best_starting_nodes = []
+    # for solution in BEST_SOLUTIONS:
+    #     for route in solution[0]:
+    #         best_starting_nodes.append(route[1])
+    # weights = (1.5 if node in best_starting_nodes else 1 for node in clients)
+    # candidate_starting_nodes = random.choices(clients,
+    #                                           weights=weights,
+    #                                           k=len(clients))
 
 
 final_time = time.time()

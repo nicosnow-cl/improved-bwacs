@@ -4,7 +4,7 @@ import random
 
 class FreeAnt:
     def __init__(self, nodes, demands, max_capacity, tare, distances_matrix,
-                 probabilities_matrix, q0):
+                 probabilities_matrix, q0, best_start_nodes=None):
         self.demands = demands
         self.max_capacity = max_capacity
         self.tare = tare
@@ -13,6 +13,13 @@ class FreeAnt:
         self.q0 = q0
         self.depot = nodes[0]
         self.clients = nodes[1:]
+        self.best_start_nodes = best_start_nodes
+
+    def set_probabilities_matrix(self, probabilities_matrix):
+        self.probabilities_matrix = probabilities_matrix
+
+    def set_best_start_nodes(self, best_start_nodes):
+        self.best_start_nodes = best_start_nodes
 
     def move_to_next_node(self, actual_node, valid_nodes):
         probabilites_of_nodes = \
@@ -55,7 +62,22 @@ class FreeAnt:
         vehicle_load = 0
         remaining_unvisited_nodes = unvisited_nodes
 
-        valid_nodes = unvisited_nodes
+        if self.best_start_nodes is not None and \
+                len(self.best_start_nodes) > 0:
+            # s = random.choice(self.best_start_nodes)
+            s = self.move_to_next_node(r, self.best_start_nodes)
+
+            route_cost += self.distances_matrix[r][s]  # Only for VRP
+            vehicle_load += self.demands[s]
+            remaining_unvisited_nodes = \
+                remaining_unvisited_nodes[remaining_unvisited_nodes != s]
+            self.best_start_nodes = list(
+                filter(lambda node: node != s, self.best_start_nodes))
+
+            route.append(s)
+            r = s
+
+        valid_nodes = remaining_unvisited_nodes
         while valid_nodes.size:
             s = self.move_to_next_node(r, valid_nodes)
 
@@ -84,9 +106,6 @@ class FreeAnt:
                 route_cost,
                 vehicle_load,
                 remaining_unvisited_nodes)
-
-    def set_probabilities_matrix(self, probabilities_matrix):
-        self.probabilities_matrix = probabilities_matrix
 
     def generate_solution(self):
         solution = []

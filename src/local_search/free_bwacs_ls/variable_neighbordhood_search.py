@@ -223,13 +223,13 @@ class GeneralVNS():
         intensity_factor = 0.0005 if intensity_percentage <= 0.85 else 0.001
         max_time = len(self.demands_array) * intensity_factor
 
-        shake = self.two_routes_exchange
         neighborhoods_samples = [self.single_route_relocate,
                                  self.single_route_swap,
                                  self.two_routes_relocate,
                                  self.two_routes_swap,
                                  self.two_routes_exchange
                                  ]
+        shake = neighborhoods_samples[-1]
 
         neighborhoods_ranking = {}
         for neighborhood in neighborhoods_samples:
