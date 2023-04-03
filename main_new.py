@@ -4,6 +4,7 @@ import time
 
 from src.new.aco import FreeAnt
 from src.readers import ReaderCVRPLIB
+from src.local_search import GeneralVNS
 
 
 def create_coords_matrix(nodes, loc_x, loc_y):
@@ -264,6 +265,9 @@ probabilities_matrix = np.multiply(np.power(pheromones_matrix, ALPHA),
 
 ant = FreeAnt(nodes, demands_array, max_capacity, tare,
               distances_matrix, probabilities_matrix, q0)
+local_search = GeneralVNS(distances_matrix, demands_array,
+                          tare, max_capacity, k, MAX_ITERATIONS)
+
 last_iteration_when_do_restart = 0
 
 start_time = time.time()
@@ -283,7 +287,8 @@ for i in range(MAX_ITERATIONS):
         solution for solution in iterations_solutions_sorted
         if len(solution[0]) == k]
 
-    iteration_best_solution = iterations_solutions_sorted_and_restricted[0]
+    iteration_best_solution = local_search.improve(
+        iterations_solutions_sorted_and_restricted[0][0], i)
     iteration_worst_solution = iterations_solutions_sorted[-1]
     average_iteration_costs = np.average([sum(solution[1]) for solution in
                                           iterations_solutions_sorted])
