@@ -287,18 +287,23 @@ for i in range(MAX_ITERATIONS):
         solution for solution in iterations_solutions_sorted
         if len(solution[0]) == k]
 
-    iteration_best_solution = local_search.improve(
-        iterations_solutions_sorted_and_restricted[0][0], i)
+    iteration_best_solution = iterations_solutions_sorted_and_restricted[0]
     iteration_worst_solution = iterations_solutions_sorted[-1]
     average_iteration_costs = np.average([sum(solution[1]) for solution in
                                           iterations_solutions_sorted])
-    global_best_solution = iteration_best_solution if len(
-        BEST_SOLUTIONS) == 0 else BEST_SOLUTIONS[0]
 
     print('    > Iteration resoluts: BEST({}), WORST({}), AVG({})'
           .format(sum(iteration_best_solution[1]),
                   sum(iteration_worst_solution[1]),
                   average_iteration_costs))
+
+    # LS by VNS
+    ls_solution = local_search.improve(iteration_best_solution[0], i)
+    if sum(ls_solution[1]) < sum(iteration_best_solution[1]):
+        iteration_best_solution = ls_solution
+
+    global_best_solution = iteration_best_solution if len(
+        BEST_SOLUTIONS) == 0 else BEST_SOLUTIONS[0]
 
     pheromones_matrix = get_evaporated_pheromones_matrix(
         pheromones_matrix, t_min, P)
