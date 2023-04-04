@@ -222,9 +222,8 @@ depot, clients, loc_x, loc_y, demands, total_demand, max_capacity, k, \
 
 TARE_PERCENTAGE = 0.15
 ALPHA = 1
-BETA = 2
+BETA = 2.5
 MAX_ITERATIONS = 250
-ANT_COUNT = 25
 BEST_SOLUTIONS = []
 P = 0.2
 q0 = 0.8
@@ -247,6 +246,8 @@ simple_probabilities_matrix = np.multiply(np.power(simple_pheromones_matrix,
                                                    BETA))
 greedy_ant = FreeAnt(nodes, demands_array, max_capacity, tare,
                      distances_matrix, simple_probabilities_matrix, q0)
+
+ANT_COUNT = int(len(nodes))
 
 GREEDY_SOLUTION = None
 for i in range(ANT_COUNT):
@@ -372,14 +373,14 @@ for i in range(MAX_ITERATIONS):
             BEST_SOLUTIONS.append(iteration_best_solution)
             BEST_SOLUTIONS = sorted(BEST_SOLUTIONS, key=lambda d: sum(d[1]))
 
-    # best_starting_nodes = []
-    # for solution in BEST_SOLUTIONS:
-    #     for route in solution[0]:
-    #         best_starting_nodes.append(route[1])
-    # weights = (1.5 if node in best_starting_nodes else 1 for node in clients)
-    # candidate_starting_nodes = random.choices(clients,
-    #                                           weights=weights,
-    #                                           k=len(clients))
+    best_starting_nodes = []
+    for solution in BEST_SOLUTIONS:
+        for route in solution[0]:
+            best_starting_nodes.append(route[1])
+    weights = (1.5 if node in best_starting_nodes else 1 for node in clients)
+    candidate_starting_nodes = random.choices(clients,
+                                              weights=weights,
+                                              k=len(clients))
 
 
 final_time = time.time()
