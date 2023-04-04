@@ -1,4 +1,4 @@
-def get_route_arcs(route):
+def get_route_arcs_legacy(route):
     route_arcs = ()
     prev_node = None
 
@@ -10,3 +10,10 @@ def get_route_arcs(route):
             route_arcs += ((prev_node, i),)
 
     return route_arcs
+
+
+def get_route_arcs(route):
+    if len(route) < 2:
+        raise ValueError("Route must have at least two nodes")
+
+    return [(route[i], route[i+1]) for i in range(len(route)-1)]

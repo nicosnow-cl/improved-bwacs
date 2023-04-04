@@ -3,8 +3,9 @@ import numpy as np
 import time
 
 from src.new.aco import FreeAnt
+from src.new.metaheuristics import GeneralVNS
+from src.new.models import VRPModel
 from src.readers import ReaderCVRPLIB
-from src.local_search import GeneralVNS
 
 
 def create_coords_matrix(nodes, loc_x, loc_y):
@@ -230,7 +231,7 @@ q0 = 0.8
 SIMILARITY_PERCENTAGE_TO_DO_RESTART = 50
 
 tare = max_capacity * TARE_PERCENTAGE
-nodes = np.array([depot] + clients)
+nodes = [depot] + clients
 demands_array = np.array([demands[node] for node in demands])
 coords_matrix = create_coords_matrix(nodes, loc_x, loc_y)
 distances_matrix = create_distances_matrix(nodes, coords_matrix)
@@ -245,7 +246,8 @@ simple_probabilities_matrix = np.multiply(np.power(simple_pheromones_matrix,
                                           np.power(normalized_distances_matrix,
                                                    BETA))
 greedy_ant = FreeAnt(nodes, demands_array, max_capacity, tare,
-                     distances_matrix, simple_probabilities_matrix, q0)
+                     distances_matrix, simple_probabilities_matrix,
+                     q0, VRPModel)
 
 ANT_COUNT = int(len(nodes))
 
@@ -265,9 +267,9 @@ probabilities_matrix = np.multiply(np.power(pheromones_matrix, ALPHA),
 
 
 ant = FreeAnt(nodes, demands_array, max_capacity, tare,
-              distances_matrix, probabilities_matrix, q0)
+              distances_matrix, probabilities_matrix, q0, VRPModel)
 local_search = GeneralVNS(distances_matrix, demands_array,
-                          tare, max_capacity, k, MAX_ITERATIONS)
+                          tare, max_capacity, k, MAX_ITERATIONS, VRPModel)
 
 last_iteration_when_do_restart = 0
 candidate_starting_nodes = None
@@ -304,10 +306,10 @@ for i in range(MAX_ITERATIONS):
                   sum(iteration_worst_solution[1]),
                   average_iteration_costs))
 
-    # LS by VNS
-    ls_solution = local_search.improve(iteration_best_solution[0], i)
-    if sum(ls_solution[1]) < sum(iteration_best_solution[1]):
-        iteration_best_solution = ls_solution
+    # # LS by VNS
+    # ls_solution = local_search.improve(iteration_best_solution[0], i)
+    # if sum(ls_solution[1]) < sum(iteration_best_solution[1]):
+    #     iteration_best_solution = ls_solution
 
     global_best_solution = iteration_best_solution if len(
         BEST_SOLUTIONS) == 0 else BEST_SOLUTIONS[0]
@@ -326,17 +328,17 @@ for i in range(MAX_ITERATIONS):
         t_min,
         P)
 
-    if (last_iteration_when_do_restart != 0):
-        pheromones_matrix = get_mutated_pheromones_matrix(
-            pheromones_matrix,
-            global_best_solution[0],
-            i,
-            last_iteration_when_do_restart,
-            MAX_ITERATIONS,
-            t_min,
-            t_max,
-            # t_threshold=get_solution_quality(global_best_solution[1])
-        )
+    # if (last_iteration_when_do_restart != 0):
+    #     pheromones_matrix = get_mutated_pheromones_matrix(
+    #         pheromones_matrix,
+    #         global_best_solution[0],
+    #         i,
+    #         last_iteration_when_do_restart,
+    #         MAX_ITERATIONS,
+    #         t_min,
+    #         t_max,
+    #         # t_threshold=get_solution_quality(global_best_solution[1])
+    #     )
 
     reach_stagnation = check_stagnation(
         iteration_best_solution[0],
@@ -373,14 +375,14 @@ for i in range(MAX_ITERATIONS):
             BEST_SOLUTIONS.append(iteration_best_solution)
             BEST_SOLUTIONS = sorted(BEST_SOLUTIONS, key=lambda d: sum(d[1]))
 
-    best_starting_nodes = []
-    for solution in BEST_SOLUTIONS:
-        for route in solution[0]:
-            best_starting_nodes.append(route[1])
-    weights = (1.5 if node in best_starting_nodes else 1 for node in clients)
-    candidate_starting_nodes = random.choices(clients,
-                                              weights=weights,
-                                              k=len(clients))
+    # best_starting_nodes = []
+    # for solution in BEST_SOLUTIONS:
+    #     for route in solution[0]:
+    #         best_starting_nodes.append(route[1])
+    # weights = (1.5 if node in best_starting_nodes else 1 for node in clients)
+    # candidate_starting_nodes = random.choices(clients,
+    #                                           weights=weights,
+    #                                           k=len(clients))
 
 
 final_time = time.time()
