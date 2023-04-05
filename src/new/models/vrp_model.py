@@ -3,6 +3,11 @@ import numpy as np
 
 class VRPModel:
     @staticmethod
+    def ant_get_cost_between_two_nodes(actual_node, new_node,
+                                       distances_matrix):
+        return distances_matrix[actual_node][new_node]
+
+    @staticmethod
     def ant_get_updated_values_after_new_move(
             actual_node,
             new_node,
@@ -12,7 +17,8 @@ class VRPModel:
             demands,
             unvisited_nodes=[]):
         new_route_cost = actual_route_cost + \
-            distances_matrix[actual_node][new_node]
+            __class__.ant_get_cost_between_two_nodes(
+                actual_node, new_node, distances_matrix)
         new_vehicle_load = actual_vehicle_load + demands[new_node]
         remaining_unvisited_nodes = []
 
@@ -32,8 +38,7 @@ class VRPModel:
         return route_cost
 
     @staticmethod
-    def fitness_function(route_arcs, distances_matrix):
-        route_arcs_np = np.array(route_arcs)
+    def fitness_function(route_arcs_np, distances_matrix):
         route_arcs_2d = np.column_stack(
             (route_arcs_np[:-1], route_arcs_np[1:]))
         route_cost = distances_matrix[route_arcs_2d[:, 0],
@@ -43,5 +48,5 @@ class VRPModel:
 
     @staticmethod
     def fitness(solution, distances_matrix):
-        return [__class__.fitness_function(route, distances_matrix)
-                for route in solution]
+        return [__class__.fitness_function(route_arcs, distances_matrix)
+                for route_arcs in solution]

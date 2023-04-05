@@ -253,7 +253,8 @@ ANT_COUNT = int(len(nodes))
 
 GREEDY_SOLUTION = None
 for i in range(ANT_COUNT):
-    greedy_solution, greedy_costs, greedy_load = greedy_ant.generate_solution()
+    greedy_solution, greedy_rout_arcs, greedy_costs, greedy_load = \
+        greedy_ant.generate_solution()
     if GREEDY_SOLUTION is None or sum(greedy_costs) < sum(
             GREEDY_SOLUTION[1]):
         GREEDY_SOLUTION = (greedy_solution, greedy_costs, greedy_load)
@@ -285,7 +286,7 @@ for i in range(MAX_ITERATIONS):
         if candidate_starting_nodes is not None:
             ant.set_best_start_nodes(candidate_starting_nodes.copy())
 
-        solution, costs, load = ant.generate_solution()
+        solution, routes_arcs, costs, load = ant.generate_solution()
         iterations_solutions.append(list((solution, costs, load)))
 
     iterations_solutions_sorted = sorted(iterations_solutions,

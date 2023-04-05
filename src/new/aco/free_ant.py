@@ -1,5 +1,7 @@
 import numpy as np
-# import random
+import random
+
+from ..helpers import get_route_arcs
 
 
 class FreeAnt:
@@ -17,32 +19,34 @@ class FreeAnt:
         self.problem_model = problem_model
         self.best_start_nodes = best_start_nodes
 
+        print(type(self.distances_matrix))
+        print(type(self.demands))
+        print(type(self.distances_matrix))
+        print(type(self.probabilities_matrix))
+        print(type(self.clients))
+
     def set_probabilities_matrix(self, probabilities_matrix):
         self.probabilities_matrix = probabilities_matrix
 
     def set_best_start_nodes(self, best_start_nodes):
         self.best_start_nodes = best_start_nodes
 
-    # def move_to_next_node_legacy(self, actual_node, valid_nodes):
-    #     probabilites_of_nodes = \
-    #         self.probabilities_matrix[actual_node][valid_nodes]
+    def move_to_next_node_legacy(self, actual_node, valid_nodes):
+        probabilites_of_nodes = \
+            self.probabilities_matrix[actual_node][valid_nodes]
 
-    #     q = random.random()
+        q = random.random()
 
-    #     if q >= self.q0:
-    #         return valid_nodes[probabilites_of_nodes.argmax()]
-    #     else:
-    #         # THIS APPROACH IS TOO SLOW
-    #         # probabilities = np.divide(
-    #         #     probabilites_of_nodes, probabilites_of_nodes.sum())
-    #         # return np.random.choice(valid_nodes, 1, p=probabilities)[0]
+        if q >= self.q0:
+            return valid_nodes[probabilites_of_nodes.argmax()]
+        else:
+            # THIS APPROACH IS TOO SLOW
+            # probabilities = np.divide(
+            #     probabilites_of_nodes, probabilites_of_nodes.sum())
+            # return np.random.choice(valid_nodes, 1, p=probabilities)[0]
 
-    #         # THIS APPROACH GIVE US WORST RESULTS
-    #         # return random.choices(valid_nodes, weights=probabilites_of_nodes,
-    #         #                       k=1)[0]
-
-    #         cumsum = np.cumsum(probabilites_of_nodes)
-    #         return random.choices(valid_nodes, cum_weights=cumsum, k=1)[0]
+            cumsum = np.cumsum(probabilites_of_nodes)
+            return random.choices(valid_nodes, cum_weights=cumsum, k=1)[0]
 
     def move_to_next_node(self, actual_node, valid_nodes):
         probabilities_of_nodes = \
@@ -149,4 +153,8 @@ class FreeAnt:
 
             unvisited_nodes = remaining_unvisited_nodes
 
-        return solution, costs, loads
+        routes_arcs = [np.array(get_route_arcs(route)) for route in solution]
+        return (solution,
+                routes_arcs,
+                costs,
+                loads)
