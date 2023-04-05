@@ -151,10 +151,12 @@ class FreeAnt:
             costs.append(cost)
             loads.append(vehicle_load)
 
-            unvisited_nodes = remaining_unvisited_nodes
+            unvisited_nodes = remaining_unvisited_nodes[:]
 
+        fitness = sum(costs)
         routes_arcs = [np.array(get_route_arcs(route)) for route in solution]
         return (solution,
+                fitness,
                 routes_arcs,
                 costs,
                 loads)

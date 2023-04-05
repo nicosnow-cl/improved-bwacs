@@ -1,6 +1,3 @@
-import numpy as np
-
-
 def get_route_arcs_legacy(route):
     route_arcs = ()
     prev_node = None
