@@ -57,6 +57,49 @@ def create_initial_pheromones_matrix(nodes, greedy_quality):
     return pheromones_matrix, t_delta, t_min, t_max
 
 
+def create_pheromones_matrix(node, t_delta):
+    return np.full((len(node), len(node)), t_delta)
+
+
+def calculate_t_values(distance_matrix, num_ant, alpha=1, beta=2, p=0.2):
+    """
+    Calculates the values for t_0, t_min, and t_max using the given parameters
+    and distance matrix.
+
+    Parameters:
+    distance_matrix (numpy.ndarray): A square matrix representing the
+    distances between all nodes.
+    num_vehicles (int): The number of vehicles in the fleet.
+    alpha (float): The importance of the pheromone trail in the
+    decision-making process.
+    beta (float): The importance of the distance between nodes in the
+    decision-making process.
+    rho (float): The rate at which pheromone evaporation occurs.
+
+    Returns:
+    tuple: A tuple containing the values for t_0, t_min, and t_max.
+    """
+
+    n = distance_matrix.shape[0]  # Number of nodes
+    m = num_ant  # Number of ants
+
+    # Calculate average distance and maximum distance between nodes
+    avg_distance = distance_matrix.mean()
+    max_distance = distance_matrix.max()
+
+    # Calculate t_0
+    t_0 = 1 / (p * (m * avg_distance))
+
+    # Calculate t_min
+    t_min = 1 / ((1 - p) * n * m *
+                 (alpha * avg_distance + beta * max_distance))
+
+    # Calculate t_max
+    t_max = 1 / (p * n * m * (alpha * avg_distance + beta * max_distance))
+
+    return t_0, t_min, t_max
+
+
 def get_solution_quality(solution_costs):
     # print(format(1 / sum(solution_costs), '.50f'))
     return 1 / sum(solution_costs)
@@ -101,7 +144,8 @@ def get_increased_pheromones_matrix(pheromones_matrix,
                                     global_best_solution_quality,
                                     t_max):
     increased_pheromones_matrix = pheromones_matrix.copy()
-
+    pheromones_amout = 1 / global_best_solution_quality
+    print(pheromones_amout)
     # plain_global_best_solution_arcs = generate_plain_solution_arcs(
     #     global_best_solution)
 
@@ -111,7 +155,7 @@ def get_increased_pheromones_matrix(pheromones_matrix,
     for arcs_idxs in global_best_solution_arcs:
         increased_pheromones_matrix[arcs_idxs[:, 0],
                                     arcs_idxs[:, 1]] += \
-            global_best_solution_quality
+            pheromones_amout
 
     increased_pheromones_matrix[increased_pheromones_matrix > t_max] = t_max
 
@@ -253,7 +297,10 @@ greedy_ant = FreeAnt(nodes, demands_array, max_capacity, tare,
                      distances_matrix, simple_probabilities_matrix,
                      q0, VRPModel)
 
-ANT_COUNT = int(len(nodes))
+ANT_COUNT = len(nodes)
+t_delta, t_min, t_max = calculate_t_values(
+    distances_matrix, ANT_COUNT, ALPHA, BETA, P)
+print(t_delta, t_min, t_max)
 
 BEST_GREEDY_FITNESS = np.inf
 for i in range(ANT_COUNT):
@@ -261,10 +308,12 @@ for i in range(ANT_COUNT):
 
     if greedy_fitness < BEST_GREEDY_FITNESS:
         BEST_GREEDY_FITNESS = greedy_fitness
+# print(create_initial_pheromones_matrix(nodes, greedy_fitness))
 
 
-BASE_PHEROMONES_MATRIX, t_delta, t_min, t_max = \
-    create_initial_pheromones_matrix(nodes, greedy_fitness)
+# BASE_PHEROMONES_MATRIX, t_delta, t_min, t_max = \
+#     create_initial_pheromones_matrix(nodes, greedy_fitness)
+BASE_PHEROMONES_MATRIX = create_pheromones_matrix(nodes, t_delta)
 pheromones_matrix = BASE_PHEROMONES_MATRIX.copy()
 probabilities_matrix = np.multiply(np.power(pheromones_matrix, ALPHA),
                                    np.power(normalized_distances_matrix, BETA))
@@ -313,7 +362,7 @@ for i in range(MAX_ITERATIONS):
 
     # # LS by VNS
     # ls_solution = local_search.improve(iteration_best_solution[0], i)
-    # if sum(ls_solution[1]) < sum(iteration_best_solution[1]):
+    # if ls_solution[1] < iteration_best_solution[1]:
     #     iteration_best_solution = ls_solution
 
     global_best_solution = BEST_SOLUTION if BEST_SOLUTION \
@@ -333,17 +382,17 @@ for i in range(MAX_ITERATIONS):
         t_min,
         P)
 
-    if (last_iteration_when_do_restart != 0):
-        pheromones_matrix = get_mutated_pheromones_matrix(
-            pheromones_matrix,
-            global_best_solution[0],
-            i,
-            last_iteration_when_do_restart,
-            MAX_ITERATIONS,
-            t_min,
-            t_max,
-            # t_threshold=global_best_solution[1]
-        )
+    # if (last_iteration_when_do_restart != 0):
+    #     pheromones_matrix = get_mutated_pheromones_matrix(
+    #         pheromones_matrix,
+    #         global_best_solution[0],
+    #         i,
+    #         last_iteration_when_do_restart,
+    #         MAX_ITERATIONS,
+    #         t_min,
+    #         t_max,
+    #         # t_threshold=global_best_solution[1]
+    #     )
 
     reach_stagnation = check_stagnation(
         iteration_best_solution[0],

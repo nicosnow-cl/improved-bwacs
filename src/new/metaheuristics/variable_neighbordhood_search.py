@@ -1,7 +1,9 @@
 import random
 import time
+import numpy as np
 
-from ..helpers import check_if_route_load_is_valid, get_route_load
+from ..helpers import check_if_route_load_is_valid, get_route_load, \
+    get_route_arcs, get_ls_max_time
 
 
 class GeneralVNS():
@@ -191,13 +193,9 @@ class GeneralVNS():
             best_solution, self.distances_matrix)
         best_solution_quality = sum(best_solution_costs)
 
-        max_time = self.time_limit
-
-        if max_time is None:
-            intensity_percentage = (actual_iteration / self.max_iterations)
-            intensity_factor = 0.0005 if intensity_percentage <= 0.85 \
-                else 0.001
-            max_time = len(self.demands_array) * intensity_factor
+        max_time = self.time_limit if self.time_limit is not None \
+            else get_ls_max_time(len(self.demands_array), actual_iteration,
+                                 self.max_iterations)
 
         neighborhoods_samples = [self.single_route_relocate,
                                  self.single_route_swap,
@@ -264,7 +262,10 @@ class GeneralVNS():
                 "One of the routes has more than the vehicle capacity")
 
         # print(neighborhoods_ranking)
+
         return (best_solution,
+                best_solution_quality,
+                [np.array(get_route_arcs(route)) for route in best_solution],
                 best_solution_costs,
                 [get_route_load(route, self.demands_array)
-                 for route in best_solution])
+                    for route in best_solution])
