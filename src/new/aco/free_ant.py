@@ -19,11 +19,11 @@ class FreeAnt:
         self.problem_model = problem_model
         self.best_start_nodes = best_start_nodes
 
-        print(type(self.distances_matrix))
-        print(type(self.demands))
-        print(type(self.distances_matrix))
-        print(type(self.probabilities_matrix))
-        print(type(self.clients))
+        # print(type(self.distances_matrix))
+        # print(type(self.demands))
+        # print(type(self.distances_matrix))
+        # print(type(self.probabilities_matrix))
+        # print(type(self.clients))
 
     def set_probabilities_matrix(self, probabilities_matrix):
         self.probabilities_matrix = probabilities_matrix
