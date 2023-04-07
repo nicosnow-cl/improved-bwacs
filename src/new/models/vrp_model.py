@@ -4,25 +4,25 @@ import numpy as np
 
 class VRPModel:
     @staticmethod
-    def get_cost_between_two_nodes(actual_node: int, new_node: int,
+    def get_cost_between_two_nodes(node1: int,
+                                   node2: int,
                                    distances_matrix: np.ndarray) -> float:
         """
-            Returns the cost of the edge between the actual node and the new
-            node.
+            Returns the cost of the edge between one node and a seconde node.
 
             Parameters:
-                actual_node (int): The current node of the ant.
+                node1 (int): The initial node.
 
-                new_node (int): The node that the ant is moving to.
+                node2 (int): The ending node.
 
                 distances_matrix (np.ndarray): A 2D NumPy array of distances
                 between various points.
 
             Returns:
-                float: The cost of the edge between the actual node and the new
+                float: cost of the edge between one node and a seconde node.
         """
 
-        return distances_matrix[actual_node][new_node]
+        return distances_matrix[node1][node2]
 
     @staticmethod
     def fitness_function_legacy(route_arcs: List[Tuple[int, int]],
@@ -50,13 +50,13 @@ class VRPModel:
         return route_cost
 
     @staticmethod
-    def fitness_function(route_arcs_np: np.ndarray,
+    def fitness_function(route_arcs: np.ndarray,
                          distances_matrix: np.ndarray) -> float:
         """
             Calculates the fitness value of a given route.
 
             Parameters:
-                route_arcs_np (np.ndarray): A 1D NumPy array of route arcs,
+                route_arcs (np.ndarray): A 1D NumPy array of route arcs,
                 where each arc represents a connection between two points.
 
                 distances_matrix (np.ndarray): A 2D NumPy array of distances
@@ -67,12 +67,9 @@ class VRPModel:
                 sum of the distances between the points in the route.
         """
 
-        route_arcs_2d = np.column_stack(
-            (route_arcs_np[:-1], route_arcs_np[1:]))
-        route_cost = distances_matrix[route_arcs_2d[:, 0],
-                                      route_arcs_2d[:, 1]].sum()
+        route_arcs_2d = np.column_stack((route_arcs[:-1], route_arcs[1:]))
 
-        return route_cost
+        return distances_matrix[route_arcs_2d[:, 0], route_arcs_2d[:, 1]].sum()
 
     @staticmethod
     def fitness(solution: List[List[int]],
@@ -96,47 +93,3 @@ class VRPModel:
 
         return [__class__.fitness_function(route_arcs, distances_matrix)
                 for route_arcs in solution]
-
-    @staticmethod
-    def ant_get_updated_values_after_new_move(
-            actual_node: int,
-            new_node: int,
-            actual_route_cost: float,
-            actual_vehicle_load: float,
-            distances_matrix: np.ndarray,
-            demands: np.ndarray) -> Tuple[float, float, List[int]]:
-        """
-            Updates the route cost, vehicle load, and unvisited nodes list for
-            an ant after it makes a new move.
-
-            Parameters:
-                actual_node (int): The current node of the ant.
-
-                new_node (int): The node that the ant is moving to.
-
-                actual_route_cost (float): The current cost of the ant's route.
-
-                actual_vehicle_load (float): The current load of the ant's
-                vehicle.
-
-                distances_matrix (np.ndarray): A 2D NumPy array of distances
-                between various points.
-
-                demands (np.ndarray): A 1D NumPy array of demands for each
-                node.
-
-                unvisited_nodes (List[int], optional): A list of unvisited
-                nodes. Defaults to an empty list.
-
-            Returns:
-                Tuple[float, float, List[int]]: A tuple containing the updated
-                route cost, vehicle load, and list of remaining unvisited
-                nodes.
-        """
-
-        new_route_cost = actual_route_cost + \
-            __class__.get_cost_between_two_nodes(
-                actual_node, new_node, distances_matrix)
-        new_vehicle_load = actual_vehicle_load + demands[new_node]
-
-        return new_route_cost, new_vehicle_load
