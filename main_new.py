@@ -1,4 +1,3 @@
-import random
 import numpy as np
 import time
 
@@ -61,7 +60,8 @@ def create_pheromones_matrix(node, t_delta):
     return np.full((len(node), len(node)), t_delta)
 
 
-def calculate_t_values_legacy(distance_matrix, num_ant, alpha=1, beta=2, p=0.2):
+def calculate_t_values_legacy(distance_matrix, num_ant,
+                              alpha=1, beta=2, p=0.2):
     """
     Calculates the values for t_0, t_min, and t_max using the given parameters
     and distance matrix.
@@ -203,7 +203,7 @@ def get_mutated_pheromones_matrix(pheromones_matrix,
                                   t_min,
                                   t_max,
                                   t_threshold=None,
-                                  delta=4,
+                                  delta=2,
                                   p_m=0.3):
     mutation_intensity = get_mutation_intensity(current_iteration,
                                                 iteration_when_do_restart,
@@ -393,11 +393,11 @@ for i in range(MAX_ITERATIONS):
                   iteration_worst_solution[1],
                   average_iteration_costs))
 
-    # if (last_iteration_when_do_restart != 0):
-    #     # LS by VNS
-    #     ls_solution = local_search.improve(iteration_best_solution[0], i)
-    #     if ls_solution[1] < iteration_best_solution[1]:
-    #         iteration_best_solution = ls_solution
+    if (last_iteration_when_do_restart != 0):
+        # LS by VNS
+        ls_solution = local_search.improve(iteration_best_solution[0], i)
+        if ls_solution[1] < iteration_best_solution[1]:
+            iteration_best_solution = ls_solution
 
     global_best_solution = BEST_SOLUTION if BEST_SOLUTION \
         else iteration_best_solution
@@ -460,7 +460,7 @@ for i in range(MAX_ITERATIONS):
 
 # unique_pheromones = np.unique(pheromones_matrix)
 # unique_pheromones_sorted = sorted(unique_pheromones)
-# print('Unique pheromones: {}'.format(unique_pheromones_sorted))
+# print('\nUnique pheromones: {}'.format(unique_pheromones_sorted))
 
 final_time = time.time()
 time_elapsed = final_time - start_time
