@@ -104,8 +104,7 @@ class VRPModel:
             actual_route_cost: float,
             actual_vehicle_load: float,
             distances_matrix: np.ndarray,
-            demands: np.ndarray,
-            unvisited_nodes: List[int] = []) -> Tuple[float, float, List[int]]:
+            demands: np.ndarray) -> Tuple[float, float, List[int]]:
         """
             Updates the route cost, vehicle load, and unvisited nodes list for
             an ant after it makes a new move.
@@ -139,10 +138,5 @@ class VRPModel:
             __class__.get_cost_between_two_nodes(
                 actual_node, new_node, distances_matrix)
         new_vehicle_load = actual_vehicle_load + demands[new_node]
-        remaining_unvisited_nodes = []
 
-        if new_node in unvisited_nodes:
-            remaining_unvisited_nodes = unvisited_nodes[:]
-            remaining_unvisited_nodes.remove(new_node)
-
-        return (new_route_cost, new_vehicle_load, remaining_unvisited_nodes)
+        return new_route_cost, new_vehicle_load
