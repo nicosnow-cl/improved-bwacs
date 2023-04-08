@@ -3,6 +3,7 @@ import numpy as np
 import random
 
 from ..helpers import get_route_arcs
+from ..models.vehicle_model import VehicleModel
 
 
 class FreeAnt:
@@ -51,9 +52,10 @@ class FreeAnt:
 
             return valid_nodes[np.searchsorted(cum_weights, np.random.rand())]
 
-    def get_valid_nodes(self, unvisited_nodes, vehicle_load):
+    def get_valid_nodes(self, unvisited_nodes, vehicle: VehicleModel):
         return [node for node in unvisited_nodes
-                if vehicle_load + self.demands[node] <= self.max_capacity]
+                if vehicle['load'] + self.demands[node]
+                <= vehicle['max_capacity']]
 
     def get_valid_nodes_sorted_by_distance(self,
                                            r,
@@ -69,7 +71,7 @@ class FreeAnt:
         r = self.depot
         route = [self.depot]
         route_cost = 0
-        vehicle_load = 0
+        vehicle: VehicleModel = {'max_capacity': self.max_capacity, 'load': 0}
 
         valid_nodes = list(unvisited_nodes)
 
@@ -78,7 +80,7 @@ class FreeAnt:
 
             route_cost += self.problem_model.get_cost_between_two_nodes(
                 r, s, self.distances_matrix)
-            vehicle_load += self.demands[s]
+            vehicle['load'] += self.demands[s]
 
             valid_nodes.remove(s)
 
@@ -90,10 +92,10 @@ class FreeAnt:
 
             route_cost += self.problem_model.get_cost_between_two_nodes(
                 r, s, self.distances_matrix)
-            vehicle_load += self.demands[s]
+            vehicle['load'] += self.demands[s]
 
             valid_nodes.remove(s)
-            valid_nodes = self.get_valid_nodes(valid_nodes, vehicle_load)
+            valid_nodes = self.get_valid_nodes(valid_nodes, vehicle)
 
             route.append(s)
             r = s
@@ -102,7 +104,7 @@ class FreeAnt:
         route_cost += self.problem_model.get_cost_between_two_nodes(
             r, self.depot, self.distances_matrix)
 
-        return route, route_cost, vehicle_load
+        return route, route_cost, vehicle['load']
 
     def generate_solution(self, ant_best_start_nodes=[]):
         solution = []

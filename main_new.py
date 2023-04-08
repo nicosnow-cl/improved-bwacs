@@ -5,7 +5,7 @@ import time
 from src.new.helpers import get_repeated_elements_from_list
 from src.new.aco import FreeAnt
 from src.new.metaheuristics import GeneralVNS
-from src.new.models import VRPModel
+from src.new.models import VRPModel, VehicleModel
 from src.readers import ReaderCVRPLIB
 
 
@@ -218,7 +218,7 @@ def get_mutated_pheromones_matrix(pheromones_matrix,
         pheromones_matrix, global_best_solution)
     mutation_value = mutation_intensity * \
         (t_threshold if t_threshold is not None else default_t_threshold) \
-        * 0.0005
+        * 0.00005
 
     mutated_pheromones_matrix = pheromones_matrix.copy()
 
@@ -333,6 +333,7 @@ simple_probabilities_matrix = np.multiply(np.power(simple_pheromones_matrix,
                                                    ALPHA),
                                           np.power(normalized_distances_matrix,
                                                    BETA))
+
 greedy_ant = FreeAnt(nodes, demands_array, max_capacity, tare,
                      distances_matrix, simple_probabilities_matrix,
                      q0, VRPModel)
@@ -407,11 +408,11 @@ for i in range(MAX_ITERATIONS):
                   iteration_worst_solution[1],
                   average_iteration_costs))
 
-    if (last_iteration_when_do_restart != 0):
-        # LS by VNS
-        ls_solution = local_search.improve(iteration_best_solution[0], i)
-        if ls_solution[1] < iteration_best_solution[1]:
-            iteration_best_solution = ls_solution
+    # if (last_iteration_when_do_restart != 0):
+    #     # LS by VNS
+    #     ls_solution = local_search.improve(iteration_best_solution[0], i)
+    #     if ls_solution[1] < iteration_best_solution[1]:
+    #         iteration_best_solution = ls_solution
 
     global_best_solution = BEST_SOLUTION if BEST_SOLUTION \
         else iteration_best_solution
@@ -463,9 +464,9 @@ for i in range(MAX_ITERATIONS):
         BEST_SOLUTION[1], ANT_COUNT, pheromones_matrix, probabilities_matrix, P
     )
 
-    if last_iteration_when_do_restart != 0:
-        candidate_starting_nodes = \
-            get_candidate_starting_nodes(BEST_SOLUTIONS, clients)
+    # if last_iteration_when_do_restart != 0:
+    #     candidate_starting_nodes = \
+    #         get_candidate_starting_nodes(BEST_SOLUTIONS, clients)
 
 
 # unique_pheromones = np.unique(pheromones_matrix)
