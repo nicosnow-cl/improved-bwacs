@@ -1,1 +1,2 @@
-from .simple_greedy_cvrp import simple_greedy_cvrp
+from .simple_greedy_cvrp import SimpleGreedy
+from .variable_neighbordhood_search import GeneralVNS

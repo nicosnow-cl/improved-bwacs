@@ -1,5 +1,9 @@
 import random
 import time
+import numpy as np
+
+from ..helpers import check_if_route_load_is_valid, get_route_load, \
+    get_route_arcs, get_ls_max_time
 
 
 class GeneralVNS():
@@ -96,7 +100,8 @@ class GeneralVNS():
         insert_index = random.randint(1, len(route2) - 2)
         route2.insert(insert_index, node)
 
-        is_route2_valid = self.check_if_route_load_is_valid(route2)
+        is_route2_valid = check_if_route_load_is_valid(
+            route2, self.demands_array, self.vehicle_capacity)
 
         if not is_route2_valid:
             return solution
@@ -127,8 +132,10 @@ class GeneralVNS():
         route1[node_index1] = node2
         route2[node_index2] = node1
 
-        is_route1_valid = self.check_if_route_load_is_valid(route1)
-        is_route2_valid = self.check_if_route_load_is_valid(route2)
+        is_route1_valid = check_if_route_load_is_valid(
+            route1, self.demands_array, self.vehicle_capacity)
+        is_route2_valid = check_if_route_load_is_valid(
+            route2, self.demands_array, self.vehicle_capacity)
 
         if not is_route1_valid or not is_route2_valid:
             return solution
@@ -166,8 +173,10 @@ class GeneralVNS():
         new_route1[route1_node_index1] = route2[route2_node_index1]
         new_route1[route1_node_index2] = route2[route2_node_index2]
 
-        is_route1_valid = self.check_if_route_load_is_valid(new_route1)
-        is_route2_valid = self.check_if_route_load_is_valid(new_route2)
+        is_route1_valid = check_if_route_load_is_valid(
+            new_route1, self.demands_array, self.vehicle_capacity)
+        is_route2_valid = check_if_route_load_is_valid(
+            new_route2, self.demands_array, self.vehicle_capacity)
 
         if not is_route1_valid or not is_route2_valid:
             return solution
@@ -180,15 +189,13 @@ class GeneralVNS():
 
     def improve(self, initial_solution, actual_iteration):
         best_solution = initial_solution.copy()
-        best_solution_costs = self.apply_fitness_by_route(best_solution)
-        best_solution_quality = self.fitness(best_solution)
+        best_solution_costs = self.problem_model.fitness(
+            best_solution, self.distances_matrix)
+        best_solution_quality = sum(best_solution_costs)
 
-        max_time = self.time_limit
-
-        if max_time is None:
-            intensity_percentage = (actual_iteration / self.max_iterations)
-            intensity_factor = 0.0005 if intensity_percentage <= 0.85 else 0.001
-            max_time = len(self.demands_array) * intensity_factor
+        max_time = self.time_limit if self.time_limit is not None \
+            else get_ls_max_time(len(self.demands_array), actual_iteration,
+                                 self.max_iterations)
 
         neighborhoods_samples = [self.single_route_relocate,
                                  self.single_route_swap,
@@ -205,7 +212,9 @@ class GeneralVNS():
         start_time = time.time()
         while time.time() - start_time < max_time:
             actual_solution = shake(best_solution.copy())
-            actual_solution_quality = self.fitness(actual_solution)
+            actual_solution_costs = self.problem_model.fitness(
+                actual_solution, self.distances_matrix)
+            actual_solution_quality = sum(actual_solution_costs)
             neighborhoods = random.choices(neighborhoods_samples,
                                            weights=(5, 4, 3, 2, 1),
                                            k=5)
@@ -214,11 +223,15 @@ class GeneralVNS():
                 try:
                     nb_solution = neighborhood(actual_solution.copy())
                     is_nb_solution_valid = all([
-                        self.check_if_route_load_is_valid(route) for route in
-                        nb_solution])
+                        check_if_route_load_is_valid(route,
+                                                     self.demands_array,
+                                                     self.vehicle_capacity)
+                        for route in nb_solution])
 
                     if is_nb_solution_valid:
-                        nb_solution_quality = self.fitness(nb_solution)
+                        nb_solution_costs = self.problem_model.fitness(
+                            nb_solution, self.distances_matrix)
+                        nb_solution_quality = sum(nb_solution_costs)
 
                         if nb_solution_quality < actual_solution_quality:
                             actual_solution = nb_solution.copy()
@@ -228,21 +241,31 @@ class GeneralVNS():
                 except ValueError as e:
                     print(f'ValueError: {e} on {neighborhood.__name__}')
                     print(actual_solution)
-                    print([self.check_if_route_load_is_valid(route) for
-                           route in actual_solution])
+                    print([check_if_route_load_is_valid(route,
+                                                        self.demands_array,
+                                                        self.vehicle_capacity)
+                           for route in actual_solution])
                     continue
 
             if actual_solution_quality < best_solution_quality:
                 best_solution = actual_solution.copy()
-                best_solution_costs = self.apply_fitness_by_route(
-                    best_solution)
-                best_solution_quality = actual_solution_quality
+                best_solution_costs = \
+                    self.problem_model.fitness(
+                        best_solution, self.distances_matrix)
+                best_solution_quality = sum(best_solution_costs)
 
-        if not all([self.check_if_route_load_is_valid(route) for route in
-                    best_solution]):
+        if not all([check_if_route_load_is_valid(route,
+                                                 self.demands_array,
+                                                 self.vehicle_capacity)
+                    for route in best_solution]):
             raise ValueError(
                 "One of the routes has more than the vehicle capacity")
 
         # print(neighborhoods_ranking)
-        return best_solution, best_solution_costs, [self.get_route_load(route)
-                                                    for route in best_solution]
+
+        return (best_solution,
+                best_solution_quality,
+                [np.array(get_route_arcs(route)) for route in best_solution],
+                best_solution_costs,
+                [get_route_load(route, self.demands_array)
+                    for route in best_solution])
