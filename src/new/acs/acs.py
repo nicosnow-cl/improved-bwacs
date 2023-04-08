@@ -1,8 +1,8 @@
-import time
 from typing import Any, List, Tuple
 import numpy as np
+import time
 
-from ..helpers import get_flattened_list
+from ..helpers import get_flattened_list, same_line_print
 from ..models import ProblemModel
 
 
@@ -13,6 +13,7 @@ class ACS:
     delta: float
     demands_array: np.ndarray
     evaporation_rate: float
+    ipynb: bool
     k_optimal: int
     matrix_costs: np.ndarray
     matrix_heuristics: np.ndarray
@@ -24,6 +25,7 @@ class ACS:
     model_local_search: Any
     model_problem: ProblemModel
     nodes: List[int]
+    normalized_matrix_heuristics: np.ndarray
     p: float
     q0: float
     t_delta: float
@@ -32,6 +34,7 @@ class ACS:
     tare: float
 
     def __init__(self, **kwargs):
+        self.ipynb = False
         self.__dict__.update(kwargs)
 
         self.evaporation_rate = (1 - self.p)
@@ -65,7 +68,7 @@ class ACS:
             The initial value of the pheromone trail levels.
         """
 
-        return 1 / (self.ants_num * matrix_costs.max())
+        return 1 / (self.ants_num * matrix_costs.sum())
 
     def calculate_t_min_t_max(self,
                               best_solution_quality: float) \
@@ -216,30 +219,27 @@ class ACS:
         with np.errstate(divide='ignore'):  # ignore division by zero warnings
             return np.divide(1, matrix, out=np.zeros_like(matrix), where=mask)
 
-    def get_probabilities_matrix(self, normalized_heuristic_matrix):
+    def get_probabilities_matrix(self):
         """
-        Updates the matrix of probabilities of choosing an arc.
+        Get the updated matrix of probabilities of choosing an arc.
 
         Parameters:
-            normalized_heuristic_matrix: A matrix of normalized heuristic
+            None.
 
         Returns:
             None.
         """
 
         return np.multiply(np.power(self.matrix_pheromones, self.alpha),
-                           np.power(normalized_heuristic_matrix, self.beta))
+                           np.power(self.normalized_matrix_heuristics,
+                                    self.beta))
 
     def run(self):
-        normalized_heuristic_matrix = self.get_normalized_matrix(
+        self.normalized_matrix_heuristics = self.get_normalized_matrix(
             self.matrix_heuristics)  # candidate to go on PROBLEM MODEL
         self.t_delta = self.get_t_delta(self.matrix_costs)
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
-        self.matrix_probabilities = self.get_probabilities_matrix(
-            normalized_heuristic_matrix)
-
-        # for key in self.__dict__:
-        #     print(key, self.__dict__[key])
+        self.matrix_probabilities = self.get_probabilities_matrix()
 
         ant = self.model_ant(self.nodes,
                              self.demands_array,
@@ -250,68 +250,88 @@ class ACS:
                              self.q0,
                              self.model_problem)
 
+        global_best_solution = (None, np.inf, None, None, None)
         best_solutions = []
-        global_best_solution = ([], np.inf, [], [], [])
 
+        max_outputs_to_print = 10
+        outputs_to_print = []
         start_time = time.time()
-        for i in range(self.max_iterations):
-            print(f'Iteration {i + 1}')
 
+        # Loop over max_iterations
+        for i in range(self.max_iterations):
             iterations_solutions = []
 
+            # Generate solutions for each ant
             for _ in range(self.ants_num):
-                solution, fitness, routes_arcs, costs, loads = \
-                    ant.generate_solution()
-                iterations_solutions.append((solution, fitness, routes_arcs,
-                                            costs, loads))
+                iterations_solutions.append(ant.generate_solution())
 
+            # Sort solutions by fitness and filter by k_optimal
             iterations_solutions_sorted = sorted(iterations_solutions,
                                                  key=lambda d: d[1])
             iterations_solutions_sorted_and_restricted = [
                 solution for solution in iterations_solutions_sorted
                 if len(solution[0]) == self.k_optimal]
-            iteration_best_solution = \
-                iterations_solutions_sorted_and_restricted[0] \
-                if len(iterations_solutions_sorted_and_restricted) > 0 else \
-                iterations_solutions_sorted[0]
+
+            # Select best and worst solutions and compute average cost
+            if iterations_solutions_sorted_and_restricted:
+                iteration_best_solution = \
+                    iterations_solutions_sorted_and_restricted[0]
+            else:
+                iteration_best_solution = iterations_solutions_sorted[0]
             iteration_worst_solution = iterations_solutions_sorted[-1]
-            average_iteration_costs = np.mean([solution[1] for solution in
-                                               iterations_solutions_sorted])
+            average_iteration_costs = np.mean(
+                [solution[1] for solution in iterations_solutions_sorted])
 
-            print('    > Iteration resoluts: BEST({}), WORST({}), AVG({})'
-                  .format(iteration_best_solution[1],
-                          iteration_worst_solution[1],
-                          average_iteration_costs))
+            # Update iteration output
+            iteration_output = [
+                f'Iteration {i + 1}',
+                '    > Iteration resoluts: BEST({}), WORST({}), AVG({})'
+                .format(iteration_best_solution[1],
+                        iteration_worst_solution[1],
+                        average_iteration_costs)
+            ]
 
+            # Update global best solution if iteration best solution is better
             if iteration_best_solution[1] < global_best_solution[1]:
                 global_best_solution = iteration_best_solution
 
+            # Evaporate pheromones and update pheromone matrix
             self.evaporate_pheromones_matrix()
-            self.update_pheromones_matrix(
-                global_best_solution[2], global_best_solution[1])
+            self.update_pheromones_matrix(global_best_solution[2],
+                                          global_best_solution[1])
 
-            if i:
+            # Update pheromone matrix bounds and probability matrix
+            if i > 0:
                 self.t_min, self.t_max = self.calculate_t_min_t_max(
                     global_best_solution[1])
                 self.set_bounds_to_pheromones_matrix()
-
-            self.matrix_probabilities = self.get_probabilities_matrix(
-                normalized_heuristic_matrix)
+            self.matrix_probabilities = self.get_probabilities_matrix()
             ant.set_probabilities_matrix(self.matrix_probabilities)
+
+            # Append iteration best solution to list of best solutions
             best_solutions.append(iteration_best_solution)
+
+            # Print iteration output
+            if self.ipynb:
+                for line in iteration_output:
+                    print(line)
+            else:
+                if len(outputs_to_print) == max_outputs_to_print:
+                    outputs_to_print.pop(0)
+
+                outputs_to_print.append(iteration_output)
+                same_line_print(outputs_to_print)
 
         final_time = time.time()
         time_elapsed = final_time - start_time
         print(f'\nTime elapsed: {time_elapsed}')
 
-        best_solutions_sorted = sorted(best_solutions, key=lambda d: d[1])
-
         best_solutions_set = []
-        best_solutions_fitness = []
-        for solution in best_solutions_sorted:
+        best_solutions_fitness = set()
+        for solution in sorted(best_solutions, key=lambda d: d[1]):
             if solution[1] not in best_solutions_fitness:
                 best_solutions_set.append(solution)
-                best_solutions_fitness.append(solution[1])
+                best_solutions_fitness.add(solution[1])
 
         print('Best solution: {}'.format(
             (global_best_solution[1],
@@ -320,3 +340,8 @@ class ACS:
         print('Best 5 solutions: {}'
               .format([(ant_solution[1], len(ant_solution[0]), ant_solution[4])
                        for ant_solution in best_solutions_set][:5]))
+
+        # print(f't_min: {self.t_min} | t_max: {self.t_max}')
+        # print(f'Pheromones min: {self.matrix_pheromones.min()}')
+        # print(f'Pheromones max: {self.matrix_pheromones.max()}')
+        # print(sorted(np.unique(self.matrix_pheromones)))

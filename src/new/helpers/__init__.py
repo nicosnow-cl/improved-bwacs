@@ -9,3 +9,4 @@ from .get_repeated_elements_from_list_of_lists import get_repeated_elements_from
 from .get_route_arcs import get_route_arcs
 from .get_route_load import get_route_load
 from .remove_element_from_list import remove_element_from_list
+from .same_line_print import same_line_print
