@@ -1,6 +1,7 @@
 from .check_if_rute_load_is_valid import check_if_route_load_is_valid
 from .get_coords_matrix import get_coords_matrix
 from .get_diff_elements_from_list_of_lists import get_diff_elements_from_list_of_lists
+from .get_distances_matrix import get_distances_matrix
 from .get_flattened_list import get_flattened_list
 from .get_ls_max_time import get_ls_max_time
 from .get_repeated_elements_from_list import get_repeated_elements_from_list

@@ -161,6 +161,7 @@ def get_increased_pheromones_matrix(pheromones_matrix,
                                     t_max):
     increased_pheromones_matrix = pheromones_matrix.copy()
     pheromones_amout = 0.2 * (1 / global_best_solution_quality)
+    # print(f'pheromones_amout: {pheromones_amout}')
     # pheromones_amout = 1 / global_best_solution_quality
 
     # print(pheromones_amout)
@@ -296,7 +297,7 @@ INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
 # INSTANCE = 'instances/TSPLIB/Eil51/eil51.tsp'
 
 reader = ReaderCVRPLIB(INSTANCE)
-depot, clients, loc_x, loc_y, demands, total_demand, max_capacity, k, \
+depot, clients, loc_x, loc_y, demands_array, total_demand, max_capacity, k, \
     tightness_ratio = reader.read()
 
 TARE_PERCENTAGE = 0.15
@@ -311,16 +312,16 @@ SIMILARITY_PERCENTAGE_TO_DO_RESTART = 50
 
 tare = max_capacity * TARE_PERCENTAGE
 nodes = [depot] + clients
-demands_array = np.array([demands[node] for node in demands])
+demands_array = np.array([demands_array[node] for node in demands_array])
 coords_matrix = create_coords_matrix(nodes, loc_x, loc_y)
-distances_matrix = create_distances_matrix(nodes, coords_matrix)
-energies_matrix = create_energies_matrix(nodes, depot, tare, distances_matrix,
+matrix_costs = create_distances_matrix(nodes, coords_matrix)
+energies_matrix = create_energies_matrix(nodes, depot, tare, matrix_costs,
                                          demands_array)
 distances_mask = np.logical_and(
-    distances_matrix != 0, np.isfinite(distances_matrix))
-normalized_distances_matrix = np.zeros_like(distances_matrix)
+    matrix_costs != 0, np.isfinite(matrix_costs))
+normalized_distances_matrix = np.zeros_like(matrix_costs)
 normalized_distances_matrix[distances_mask] = np.divide(
-    1, distances_matrix[distances_mask])
+    1, matrix_costs[distances_mask])
 
 energies_mask = np.logical_and(
     energies_matrix != 0, np.isfinite(energies_matrix))
@@ -334,9 +335,8 @@ simple_probabilities_matrix = np.multiply(np.power(simple_pheromones_matrix,
                                           np.power(normalized_distances_matrix,
                                                    BETA))
 
-greedy_ant = FreeAnt(nodes, demands_array, max_capacity, tare,
-                     distances_matrix, simple_probabilities_matrix,
-                     q0, VRPModel)
+greedy_ant = FreeAnt(nodes, demands_array, simple_probabilities_matrix,
+                     matrix_costs, max_capacity, tare, q0, VRPModel)
 
 ANT_COUNT = len(nodes)
 # t_delta, t_min, t_max = calculate_t_values(
@@ -362,9 +362,9 @@ t_min, t_max = calculate_t_values(
     BEST_GREEDY_FITNESS, ANT_COUNT, BASE_PHEROMONES_MATRIX,
     probabilities_matrix, P)
 
-ant = FreeAnt(nodes, demands_array, max_capacity, tare,
-              distances_matrix, probabilities_matrix, q0, VRPModel)
-local_search = GeneralVNS(distances_matrix, demands_array,
+ant = FreeAnt(nodes, demands_array, probabilities_matrix, matrix_costs,
+              max_capacity, tare, q0, VRPModel)
+local_search = GeneralVNS(matrix_costs, demands_array,
                           tare, max_capacity, k, MAX_ITERATIONS, VRPModel)
 
 last_iteration_when_do_restart = 0

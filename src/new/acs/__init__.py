@@ -1,2 +1,2 @@
-from .ant_colony_system import ACS
+from .acs import ACS
 from .bwacs import BWACS

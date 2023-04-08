@@ -7,28 +7,34 @@ from ..models.vehicle_model import VehicleModel
 
 
 class FreeAnt:
-    def __init__(self, nodes, demands, max_capacity, tare,
-                 distances_matrix, probabilities_matrix, q0,
+    def __init__(self,
+                 nodes,
+                 demands_array,
+                 matrix_probabilities,
+                 matrix_costs,
+                 max_capacity,
+                 tare,
+                 q0,
                  problem_model):
-        self.demands = demands
+        self.demands_array = demands_array
+        self.matrix_probabilities = matrix_probabilities
+        self.matrix_costs = matrix_costs
         self.max_capacity = max_capacity
         self.tare = tare
-        self.distances_matrix = distances_matrix
-        self.probabilities_matrix = probabilities_matrix
         self.q0 = q0
+        self.problem_model = problem_model
         self.depot = nodes[0]
         self.clients = set(nodes[1:])
-        self.problem_model = problem_model
 
     def set_probabilities_matrix(self, probabilities_matrix):
-        self.probabilities_matrix = probabilities_matrix
+        self.matrix_probabilities = probabilities_matrix
 
     def set_best_start_nodes(self, best_start_nodes):
         self.best_start_nodes = best_start_nodes
 
     def move_to_next_node_legacy(self, actual_node, valid_nodes):
         probabilites_of_nodes = \
-            self.probabilities_matrix[actual_node][valid_nodes]
+            self.matrix_probabilities[actual_node][valid_nodes]
 
         q = random.random()
 
@@ -40,7 +46,7 @@ class FreeAnt:
 
     def choose_next_node(self, actual_node, valid_nodes):
         probabilities_of_nodes = \
-            self.probabilities_matrix[actual_node][valid_nodes]
+            self.matrix_probabilities[actual_node][valid_nodes]
 
         q = np.random.rand()
 
@@ -54,7 +60,7 @@ class FreeAnt:
 
     def get_valid_nodes(self, unvisited_nodes, vehicle: VehicleModel):
         return [node for node in unvisited_nodes
-                if vehicle['load'] + self.demands[node]
+                if vehicle['load'] + self.demands_array[node]
                 <= vehicle['max_capacity']]
 
     def get_valid_nodes_sorted_by_distance(self,
@@ -63,7 +69,7 @@ class FreeAnt:
                                            vehicle_load):
         valid_nodes = self.get_valid_nodes(unvisited_nodes, vehicle_load)
 
-        return valid_nodes[self.distances_matrix[r][valid_nodes].argsort()]
+        return valid_nodes[self.matrix_costs[r][valid_nodes].argsort()]
 
     def generate_route(self,
                        unvisited_nodes: Set[int],
@@ -79,8 +85,8 @@ class FreeAnt:
             s = self.choose_next_node(r, ant_best_start_nodes)
 
             route_cost += self.problem_model.get_cost_between_two_nodes(
-                r, s, self.distances_matrix)
-            vehicle['load'] += self.demands[s]
+                r, s, self.matrix_costs)
+            vehicle['load'] += self.demands_array[s]
 
             valid_nodes.remove(s)
 
@@ -91,8 +97,8 @@ class FreeAnt:
             s = self.choose_next_node(r, valid_nodes)
 
             route_cost += self.problem_model.get_cost_between_two_nodes(
-                r, s, self.distances_matrix)
-            vehicle['load'] += self.demands[s]
+                r, s, self.matrix_costs)
+            vehicle['load'] += self.demands_array[s]
 
             valid_nodes.remove(s)
             valid_nodes = self.get_valid_nodes(valid_nodes, vehicle)
@@ -102,7 +108,7 @@ class FreeAnt:
 
         route.append(self.depot)
         route_cost += self.problem_model.get_cost_between_two_nodes(
-            r, self.depot, self.distances_matrix)
+            r, self.depot, self.matrix_costs)
 
         return route, route_cost, vehicle['load']
 
