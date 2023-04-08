@@ -1,27 +1,14 @@
 from typing import List, Tuple
 import numpy as np
 
+from .problem_model import ProblemModel
 
-class VRPModel:
+
+class VRPModel(ProblemModel):
     @staticmethod
     def get_cost_between_two_nodes(node1: int,
                                    node2: int,
                                    distances_matrix: np.ndarray) -> float:
-        """
-            Returns the cost of the edge between one node and a seconde node.
-
-            Parameters:
-                node1 (int): The initial node.
-
-                node2 (int): The ending node.
-
-                distances_matrix (np.ndarray): A 2D NumPy array of distances
-                between various points.
-
-            Returns:
-                float: cost of the edge between one node and a seconde node.
-        """
-
         return distances_matrix[node1][node2]
 
     @staticmethod
@@ -52,21 +39,6 @@ class VRPModel:
     @staticmethod
     def fitness_function(route_arcs: np.ndarray,
                          distances_matrix: np.ndarray) -> float:
-        """
-            Calculates the fitness value of a given route.
-
-            Parameters:
-                route_arcs (np.ndarray): A 1D NumPy array of route arcs,
-                where each arc represents a connection between two points.
-
-                distances_matrix (np.ndarray): A 2D NumPy array of distances
-                between various points.
-
-            Returns:
-                float: The fitness value of the given route, calculated as the
-                sum of the distances between the points in the route.
-        """
-
         route_arcs_2d = np.column_stack((route_arcs[:-1], route_arcs[1:]))
 
         return distances_matrix[route_arcs_2d[:, 0], route_arcs_2d[:, 1]].sum()
@@ -74,22 +46,5 @@ class VRPModel:
     @staticmethod
     def fitness(solution: List[List[int]],
                 distances_matrix: np.ndarray) -> List[float]:
-        """
-            Calculates the fitness value for each route in the given solution.
-
-            Parameters:
-                solution (List[List[int]]): A list of route arcs, where each
-                arc represents a connection between two points.
-
-                distances_matrix (np.ndarray): A 2D NumPy array of distances
-                between various points.
-
-            Returns:
-                List[float]: A list of fitness values, where the fitness value
-                of each route arc in the solution is calculated using the
-                fitness_function() method of the class that contains this
-                static method.
-        """
-
         return [__class__.fitness_function(route_arcs, distances_matrix)
                 for route_arcs in solution]

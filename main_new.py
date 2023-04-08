@@ -361,7 +361,6 @@ t_min, t_max = calculate_t_values(
     BEST_GREEDY_FITNESS, ANT_COUNT, BASE_PHEROMONES_MATRIX,
     probabilities_matrix, P)
 
-
 ant = FreeAnt(nodes, demands_array, max_capacity, tare,
               distances_matrix, probabilities_matrix, q0, VRPModel)
 local_search = GeneralVNS(distances_matrix, demands_array,
