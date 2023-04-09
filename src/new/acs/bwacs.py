@@ -74,7 +74,7 @@ class BWACS(ACS):
                                                          restart_iteration)
         t_threshold = self.get_t_threshold(solution_arcs)
 
-        mutation_value = mutation_intensity * t_threshold * 0.001
+        mutation_value = self.p * (mutation_intensity * t_threshold)
 
         # Use triu_indices to get upper triangle indices
         iu = np.triu_indices(self.matrix_pheromones.shape[0], k=1)
@@ -289,14 +289,14 @@ class BWACS(ACS):
             if iteration_best_solution[1] < global_best_solution[1]:
                 global_best_solution = iteration_best_solution
 
-            # Evaporate pheromones and update pheromone matrix
+            # Evaporate pheromones and update pheromone matrix by BWACS
             self.evaporate_pheromones_matrix()
             self.update_pheromones_matrix(global_best_solution[2],
                                           global_best_solution[1])
             self.penalize_pheromones_matrix(global_best_solution[2],
                                             iteration_worst_solution[2])
 
-            # Update pheromone matrix and check stagnation
+            # Mutate pheromone matrix and check stagnation
             if i > 0:
                 if restart_iteration > 0:
                     self.mutate_pheromones_matrix(global_best_solution[2],
@@ -335,6 +335,7 @@ class BWACS(ACS):
                 outputs_to_print.append(iteration_output)
                 same_line_print(outputs_to_print)
 
+        # Ending the algorithm run
         final_time = time.time()
         time_elapsed = final_time - start_time
         print(f'\nTime elapsed: {time_elapsed}')

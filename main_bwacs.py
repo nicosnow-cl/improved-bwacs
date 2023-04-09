@@ -49,7 +49,7 @@ parameters = {
     'percentage_of_similarity': SIMILARITY_PERCENTAGE_TO_DO_RESTART,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
-    'work_with_candidate_nodes': True
+    'work_with_candidate_nodes': False
 }
 
 acs = BWACS(**parameters)
