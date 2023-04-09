@@ -31,9 +31,11 @@ class ACS:
     t_max: float
     t_min: float
     tare: float
+    work_with_candidate_nodes: bool
 
     def __init__(self, **kwargs):
         self.ipynb = False
+        self.work_with_candidate_nodes = False
 
         self.__dict__.update(kwargs)
 

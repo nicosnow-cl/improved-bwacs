@@ -296,13 +296,14 @@ class BWACS(ACS):
             self.penalize_pheromones_matrix(global_best_solution[2],
                                             iteration_worst_solution[2])
 
-            # Update pheromone matrix bounds and probability matrix
+            # Update pheromone matrix and check stagnation
             if i > 0:
                 if restart_iteration > 0:
                     self.mutate_pheromones_matrix(global_best_solution[2],
                                                   i, restart_iteration)
-                    candidate_starting_nodes = \
-                        self.get_candidate_starting_nodes(best_solutions)
+                    if self.work_with_candidate_nodes:
+                        candidate_starting_nodes = \
+                            self.get_candidate_starting_nodes(best_solutions)
 
                 if self.reach_stagnation(iteration_best_solution[2],
                                          iteration_worst_solution[2]):
@@ -312,6 +313,7 @@ class BWACS(ACS):
                         self.t_delta)
                     restart_iteration = i
 
+            # Update t_min and t_max and set bounds to pheromones matrix
             self.t_min, self.t_max = self.calculate_t_min_t_max(
                 global_best_solution[1])
             self.set_bounds_to_pheromones_matrix()
