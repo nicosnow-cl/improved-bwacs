@@ -52,4 +52,4 @@ parameters = {
 }
 
 acs = BWACS(**parameters)
-acs.run()
+global_best_solution, best_solutions_set = acs.run()

@@ -189,6 +189,26 @@ class BWACS(ACS):
                               k=self.ants_num)
 
     def run(self):
+        """
+        Runs the Ant Colony Optimization algorithm.
+
+        It initializes the pheromone matrix, generates `max_iterations`
+        solutions using `ants_num` ants, applies the local search method
+        (if specified), updates the pheromone matrix and prints relevant
+        information at each iteration.
+
+        Parameters
+        ----------
+        None.
+
+        Returns
+        -------
+        global_best_solution (tuple): The best solution found by the algorithm.
+
+        global_best_solutions (list[tuple]): A list of the best solutions
+        found by the algorithm at each iteration.
+        """
+
         self.normalized_matrix_heuristics = self.get_normalized_matrix(
             self.matrix_heuristics)  # candidate to go on PROBLEM MODEL
         self.t_delta = self.get_t_delta(self.matrix_costs)
@@ -339,3 +359,5 @@ class BWACS(ACS):
         # print(f'Pheromones min: {self.matrix_pheromones.min()}')
         # print(f'Pheromones max: {self.matrix_pheromones.max()}')
         # print(sorted(np.unique(self.matrix_pheromones)))
+
+        return global_best_solution, best_solutions_set
