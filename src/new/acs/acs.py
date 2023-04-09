@@ -10,7 +10,6 @@ class ACS:
     alpha: float
     ants_num: int
     beta: float
-    delta: float
     demands_array: np.ndarray
     evaporation_rate: float
     ipynb: bool
@@ -35,6 +34,7 @@ class ACS:
 
     def __init__(self, **kwargs):
         self.ipynb = False
+
         self.__dict__.update(kwargs)
 
         self.evaporation_rate = (1 - self.p)
@@ -68,7 +68,7 @@ class ACS:
             The initial value of the pheromone trail levels.
         """
 
-        return 1 / (self.ants_num * matrix_costs.sum())
+        return 1 / (self.ants_num * matrix_costs.max())
 
     def calculate_t_min_t_max(self,
                               best_solution_quality: float) \
@@ -151,52 +151,6 @@ class ACS:
         for arcs_idxs in solution_arcs:
             self.matrix_pheromones[arcs_idxs[:, 0],
                                    arcs_idxs[:, 1]] += pheromones_amout
-
-    def get_mutation_intensity(self,
-                               iteration: int,
-                               restart_iteration: int) -> float:
-        """
-        Calculates the mutation intensity for a given iteration.
-
-        Parameters:
-            iteration: The current iteration number.
-
-            restart_iteration: The iteration number when a restart is
-            performed.
-
-            max_iteration: The maximum iteration number.
-
-        Returns:
-            The mutation intensity for the given iteration as a float.
-        """
-
-        a = (iteration - restart_iteration)
-        b = (self.max_iterations - restart_iteration)
-
-        return (a / b) * self.delta
-
-    def get_t_threshold(self,
-                        global_best_solution_arcs: List[np.ndarray]) -> float:
-        """
-        Calculates the average pheromone level for the edges in the global
-        best solution.
-
-        Parameters:
-            global_best_solution_arcs: A list of NumPy arrays containing the
-            arcs that make up the edges of the global best solution.
-
-        Returns:
-            The average pheromone level for the edges in the global best
-            solution.
-        """
-
-        plain_arcs = get_flattened_list(global_best_solution_arcs)
-        pheromones = []
-
-        for i, j in plain_arcs:
-            pheromones.append(self.matrix_pheromones[i][j])
-
-        return np.mean(pheromones)
 
     def set_bounds_to_pheromones_matrix(self) -> None:
         """
