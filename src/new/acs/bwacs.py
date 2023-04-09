@@ -1,8 +1,7 @@
-import itertools
+from typing import Any, List
+import numpy as np
 import random
 import time
-import numpy as np
-from typing import List
 
 from .acs import ACS
 from ..helpers import get_flattened_list, same_line_print
@@ -10,6 +9,7 @@ from ..helpers import get_flattened_list, same_line_print
 
 class BWACS(ACS):
     delta: int
+    model_ls_it: Any
     p_m: float
     percentage_of_similarity: float
 
@@ -17,6 +17,7 @@ class BWACS(ACS):
         super().__init__(**kwargs)
 
         self.delta = 2
+        self.model_ls_it = None
         self.p_m = 0.3
         self.percentage_of_similarity = 50
 
@@ -133,6 +134,22 @@ class BWACS(ACS):
     def reach_stagnation(self,
                          it_best_solution_arcs,
                          it_worst_solution_arcs):
+        """
+        Determine if the algorithm has reached stagnation based on the current
+        and previous best and worst solutions.
+
+        Args:
+            it_best_solution_arcs (list): A list of arcs that represent the
+            current best solution.
+
+            it_worst_solution_arcs (list): A list of arcs that represent the
+            current worst solution.
+
+        Returns:
+            bool: True if the percentage of similarity between the current
+            best and worst solutions is greater than or equal to the
+            predetermined threshold for stagnation, False otherwise.
+        """
 
         it_best_solution_arcs_set = set(
             get_flattened_list(it_best_solution_arcs, tuple))
@@ -148,15 +165,28 @@ class BWACS(ACS):
 
         return actual_percentage >= self.percentage_of_similarity
 
-    def get_candidate_starting_nodes(self, best_solutions):
+    def get_candidate_starting_nodes(self, solutions):
+        """
+        Returns a list of candidate starting nodes for the ants, biased
+        towards the best starting nodes from the given solutions.
+
+        Parameters:
+            solutions(list): A list of solutions to the TSP problem, each
+            represented as a tuple of a list of arcs and their
+            corresponding cost.
+
+        Returns:
+            list: A list of candidate starting nodes for the ants.
+        """
+
         best_starting_nodes = {route[1]
-                               for solution in best_solutions
+                               for solution in solutions
                                for route in solution[0]}
+        weights = {node: 2 if node in best_starting_nodes else 1
+                   for node in self.nodes}
 
-        weights = [
-            2 if node in best_starting_nodes else 1 for node in self.nodes[0:]]
-
-        return random.choices(self.nodes[0:], weights=weights, k=self.ants_num)
+        return random.choices(self.nodes, weights=weights.values(),
+                              k=self.ants_num)
 
     def run(self):
         self.normalized_matrix_heuristics = self.get_normalized_matrix(
@@ -173,6 +203,16 @@ class BWACS(ACS):
                              self.tare,
                              self.q0,
                              self.model_problem)
+
+        ls_it = None
+        if self.model_ls_it:
+            ls_it = self.model_ls_it(self.matrix_costs,
+                                     self.demands_array,
+                                     self.tare,
+                                     self.max_capacity,
+                                     self.k_optimal,
+                                     self.max_iterations,
+                                     self.model_problem)
 
         global_best_solution = (None, np.inf, None, None, None)
         best_solutions = []
@@ -217,6 +257,13 @@ class BWACS(ACS):
                         iteration_worst_solution[1],
                         average_iteration_costs)
             ]
+
+            # LS by VNS on best iteration solution
+            if ls_it:
+                ls_it_solution = ls_it.improve(iteration_best_solution[0], i)
+
+                if ls_it_solution[1] < iteration_best_solution[1]:
+                    iteration_best_solution = ls_it_solution
 
             # Update global best solution if iteration best solution is better
             if iteration_best_solution[1] < global_best_solution[1]:
@@ -284,6 +331,9 @@ class BWACS(ACS):
         print('Best 5 solutions: {}'
               .format([(ant_solution[1], len(ant_solution[0]), ant_solution[4])
                        for ant_solution in best_solutions_set][:5]))
+
+        if restart_iteration:
+            print(f'Last iteration when do restart: {restart_iteration}')
 
         # print(f't_min: {self.t_min} | t_max: {self.t_max}')
         # print(f'Pheromones min: {self.matrix_pheromones.min()}')
