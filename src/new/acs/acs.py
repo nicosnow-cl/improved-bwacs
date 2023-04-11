@@ -3,7 +3,7 @@ import numpy as np
 import random
 import time
 
-from ..helpers import same_line_print
+from ..helpers import same_line_print, get_flattened_list
 from ..models import ProblemModel
 
 
@@ -11,6 +11,7 @@ class ACS:
     alpha: float
     ants_num: int
     beta: float
+    arcs_clusters: List[Tuple]
     demands_array: np.ndarray
     evaporation_rate: float
     ipynb: bool
@@ -37,6 +38,7 @@ class ACS:
     def __init__(self, **kwargs):
         self.ipynb = False
         self.work_with_candidate_nodes = False
+        self.arcs_clusters = None
 
         self.__dict__.update(kwargs)
 
@@ -56,8 +58,16 @@ class ACS:
             The matrix has shape (num_nodes, num_nodes), where num_nodes
             is the number of nodes in the problem.
         """
+        shape = len(self.nodes)
+        matrix_pheromones = np.full((shape, shape), t_delta)
 
-        return np.full((len(self.nodes), len(self.nodes)), t_delta)
+        if self.arcs_clusters:
+            flattened_arcs_clusters = get_flattened_list(self.arcs_clusters)
+
+            for i, j in flattened_arcs_clusters:
+                matrix_pheromones[i][j] += t_delta
+
+        return matrix_pheromones
 
     def get_t_delta(self, matrix_costs: np.ndarray) -> float:
         """

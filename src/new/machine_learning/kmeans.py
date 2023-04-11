@@ -2,6 +2,7 @@ import math
 import time
 from typing import List
 import numpy as np
+import itertools
 
 
 class KMeans:
@@ -69,12 +70,12 @@ class KMeans:
 
     def get_new_centroids(self, unassigned_nodes, clusters):
         D = np.array(
-            [self.coords_matrix[cluster].mean(axis=0) for cluster in clusters])
+            [self.matrix_coords[cluster].mean(axis=0) for cluster in clusters])
 
         for node in unassigned_nodes:
             M = self.matrix_distances_to_centroids[:, node]
             k = M.argsort()[0]
-            D[k] = self.coords_matrix[node]
+            D[k] = self.matrix_coords[node]
 
         return D
 
@@ -168,7 +169,7 @@ class KMeans:
                   + str(best_total_cost))
             print('        - New total cost: ' + str(new_total_cost) + '\n')
 
-            self.D = self.get_d_list()
+            self.D = self.get_new_centroids(unass_nodes, clusters)
 
             if new_total_cost < best_total_cost:
                 best_clusters = clusters[:]
@@ -206,21 +207,33 @@ class KMeans:
         print('    > Best clusters:  {} , with final cost: {}'
               .format(str(best_clusters), str(best_total_cost))
               + ', unassigned nodes: {}'
-              .fotmat(str(best_unassigned_nodes)))
+              .format(str(best_unassigned_nodes)))
         print('    > Best clusters (Constraint):  {} , with final cost: {}'
               .format(str(best_constraint_clusters),
                       str(best_constraint_total_cost))
               + ', unassigned nodes: {}'
-              .fotmat(str(best_constraint_unassigned_nodes)))
+              .format(str(best_constraint_unassigned_nodes)))
         print('    --- %s seconds ---\n' % (time.time() - start_time))
 
         if best_constraint_clusters is not None:
-            return ([cluster.tolist() for cluster in best_constraint_clusters],
+            clusters_lst = [cluster.tolist()
+                            for cluster in best_constraint_clusters]
+            clusters_arcs = [list(itertools.combinations(
+                cluster, 2)) for cluster in clusters_lst]
+
+            return (clusters_lst,
+                    clusters_arcs,
                     best_constraint_total_cost,
                     best_contraint_centroids,
                     best_constraint_unassigned_nodes)
         else:
-            return ([cluster.tolist() for cluster in best_clusters],
+            clusters_lst = [cluster.tolist()
+                            for cluster in best_clusters]
+            clusters_arcs = [list(itertools.combinations(
+                cluster, 2)) for cluster in clusters_lst]
+
+            return (clusters_lst,
+                    clusters_arcs,
                     best_total_cost,
                     best_centroids,
                     best_unassigned_nodes)
