@@ -1,8 +1,9 @@
 from typing import Any, List, Tuple
 import numpy as np
+import random
 import time
 
-from ..helpers import get_flattened_list, same_line_print
+from ..helpers import same_line_print
 from ..models import ProblemModel
 
 
@@ -41,7 +42,7 @@ class ACS:
 
         self.evaporation_rate = (1 - self.p)
 
-    def create_pheromones_matrix(self, t_delta: float = 0.1) -> np.ndarray:
+    def create_pheromones_matrix(self, t_delta: float = 0.001) -> np.ndarray:
         """
         Creates the initial matrix of pheromone trail levels.
 
@@ -70,7 +71,7 @@ class ACS:
             The initial value of the pheromone trail levels.
         """
 
-        return 1 / (self.ants_num * matrix_costs.max())
+        return 1 / (len(self.nodes) * matrix_costs.max())
 
     def calculate_t_min_t_max(self,
                               best_solution_quality: float) \
@@ -90,15 +91,11 @@ class ACS:
 
         t_max = (1 / self.evaporation_rate) * (1 / best_solution_quality)
 
-        max_pheromone = self.matrix_pheromones.max()
         max_probability = self.matrix_probabilities.max()
-        n_root_probabilitiy = max_probability ** (1 / self.ants_num)
+        n_root_probabilitiy = max_probability ** -self.ants_num
 
-        # a = (2 * max_pheromone) / ((self.ants_num - 2) * n_root_probabilitiy)
-        # b = (2 * max_pheromone) * (1 - n_root_probabilitiy)
-
-        a = (2 * max_pheromone) * (1 - n_root_probabilitiy)
-        b = n_root_probabilitiy * (self.ants_num - 2)
+        a = (2 * t_max) * (1 - n_root_probabilitiy)
+        b = (len(self.nodes) - 2) * n_root_probabilitiy
 
         t_min = a / b
 
@@ -133,7 +130,10 @@ class ACS:
 
         self.matrix_pheromones *= self.evaporation_rate
 
-    def update_pheromones_matrix(self, solution_arcs, solution_quality):
+    def update_pheromones_matrix(self,
+                                 solution_arcs,
+                                 solution_quality,
+                                 factor=1):
         """
         Updates the pheromones matrix based on the given solution arcs and
         quality.
@@ -148,7 +148,7 @@ class ACS:
             None.
         """
 
-        pheromones_amout = self.p * self.get_acs_fitness(solution_quality)
+        pheromones_amout = factor * self.get_acs_fitness(solution_quality)
 
         for arcs_idxs in solution_arcs:
             self.matrix_pheromones[arcs_idxs[:, 0],
@@ -169,7 +169,7 @@ class ACS:
         np.clip(self.matrix_pheromones, self.t_min,
                 self.t_max, out=self.matrix_pheromones)
 
-    def get_normalized_matrix(self, matrix):
+    def get_normalized_matrix(self, matrix: np.ndarray) -> np.ndarray:
         mask = (matrix != 0) & np.isfinite(matrix)
 
         with np.errstate(divide='ignore'):  # ignore division by zero warnings
@@ -189,6 +189,29 @@ class ACS:
         return np.multiply(np.power(self.matrix_pheromones, self.alpha),
                            np.power(self.normalized_matrix_heuristics,
                                     self.beta))
+
+    def get_candidate_starting_nodes(self, solutions):
+        """
+        Returns a list of candidate starting nodes for the ants, biased
+        towards the best starting nodes from the given solutions.
+
+        Parameters:
+            solutions(list): A list of solutions to the TSP problem, each
+            represented as a tuple of a list of arcs and their
+            corresponding cost.
+
+        Returns:
+            list: A list of candidate starting nodes for the ants.
+        """
+
+        best_starting_nodes = {route[1]
+                               for solution in solutions
+                               for route in solution[0]}
+        weights = {node: 2 if node in best_starting_nodes else 1
+                   for node in self.nodes}
+
+        return random.choices(self.nodes, weights=weights.values(),
+                              k=self.ants_num)
 
     def run(self):
         self.normalized_matrix_heuristics = self.get_normalized_matrix(
@@ -212,14 +235,25 @@ class ACS:
         max_outputs_to_print = 10
         outputs_to_print = []
         start_time = time.time()
+        candidate_starting_nodes = []
 
         # Loop over max_iterations
         for i in range(self.max_iterations):
             iterations_solutions = []
 
-            # Generate solutions for each ant
+            # Generate solutions for each ant and update pheromones matrix
             for _ in range(self.ants_num):
-                iterations_solutions.append(ant.generate_solution())
+                solution = ant.generate_solution(candidate_starting_nodes)
+                iterations_solutions.append(solution)
+
+                # Update pheromones matrix with local update
+                self.evaporate_pheromones_matrix()
+                self.update_pheromones_matrix(
+                    solution[2], solution[1], self.p)
+
+                # Update probabilities matrix
+                self.matrix_probabilities = self.get_probabilities_matrix()
+                ant.set_probabilities_matrix(self.matrix_probabilities)
 
             # Sort solutions by fitness and filter by k_optimal
             iterations_solutions_sorted = sorted(iterations_solutions,
@@ -251,16 +285,22 @@ class ACS:
             if iteration_best_solution[1] < global_best_solution[1]:
                 global_best_solution = iteration_best_solution
 
-            # Evaporate pheromones and update pheromone matrix
+            # Evaporate pheromones and update pheromone matrix by global best
             self.evaporate_pheromones_matrix()
             self.update_pheromones_matrix(global_best_solution[2],
                                           global_best_solution[1])
 
-            # Update pheromone matrix bounds and probability matrix
             if i > 0:
-                self.t_min, self.t_max = self.calculate_t_min_t_max(
-                    global_best_solution[1])
-                self.set_bounds_to_pheromones_matrix()
+                if self.work_with_candidate_nodes:
+                    candidate_starting_nodes = \
+                        self.get_candidate_starting_nodes(best_solutions)
+
+            # Update t_min and t_max and set bounds to pheromones matrix
+            self.t_min, self.t_max = self.calculate_t_min_t_max(
+                global_best_solution[1])
+            self.set_bounds_to_pheromones_matrix()
+
+            # Update probabilities matrix
             self.matrix_probabilities = self.get_probabilities_matrix()
             ant.set_probabilities_matrix(self.matrix_probabilities)
 

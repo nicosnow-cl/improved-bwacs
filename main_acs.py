@@ -9,8 +9,8 @@ from src.readers import ReaderCVRPLIB
 ALPHA = 1
 BETA = 2
 INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
-MAX_ITERATIONS = 250
-P = 0.1
+MAX_ITERATIONS = 300
+P = 0.2
 Q_0 = 0.8
 TARE_PERCENTAGE = 0.15
 
@@ -40,6 +40,7 @@ parameters = {
     'p': P,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
+    'work_with_candidate_nodes': True
 }
 
 acs = ACS(**parameters)
