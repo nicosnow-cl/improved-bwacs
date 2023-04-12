@@ -69,7 +69,7 @@ class ACS:
 
         return matrix_pheromones
 
-    def get_t_delta(self, matrix_costs: np.ndarray) -> float:
+    def get_initial_t_delta(self, matrix_costs: np.ndarray) -> float:
         """
         Calculates the initial value of the pheromone trail levels.
 
@@ -99,16 +99,24 @@ class ACS:
             trail levels.
         """
 
-        t_max = (1 / self.evaporation_rate) * (1 / best_solution_quality)
+        # t_max = (1 / self.evaporation_rate) * (1 / best_solution_quality)
 
-        max_probability = self.matrix_probabilities.max()
-        n_root_probabilitiy = max_probability ** -self.ants_num
+        # max_probability = self.matrix_probabilities.max()
+        # n_root_probabilitiy = max_probability ** -len(self.nodes)
 
-        a = (2 * t_max) * (1 - n_root_probabilitiy)
-        b = (len(self.nodes) - 2) * n_root_probabilitiy
+        # a = (2 * t_max) * (1 - n_root_probabilitiy)
+        # b = (len(self.nodes) - 2) * n_root_probabilitiy
 
-        t_min = a / b
+        # t_min = a / b
+        n = len(self.nodes)
 
+        t_max = 1 / (self.p * best_solution_quality)
+
+        t_min = t_max * (1 - (0.05) ** (1 / n)) / \
+            ((n / 2 - 1) * (0.05) ** (1 / n))
+
+        # print(f'max probability: {max_probability}')
+        # print('t_min: {: .20f}'.format(t_min))
         return t_min, t_max
 
     def get_acs_fitness(self, solutin_quality: float) -> float:
@@ -127,7 +135,8 @@ class ACS:
 
         return 1 / solutin_quality
 
-    def evaporate_pheromones_matrix(self) -> None:
+    def evaporate_pheromones_matrix(self,
+                                    evaporation_rate: float = None) -> None:
         """
         Evaporates the pheromone trail levels in the pheromone matrix.
 
@@ -138,7 +147,8 @@ class ACS:
             None.
         """
 
-        self.matrix_pheromones *= self.evaporation_rate
+        self.matrix_pheromones *= self.evaporation_rate if evaporation_rate \
+            is None else evaporation_rate
 
     def update_pheromones_matrix(self,
                                  solution_arcs,
@@ -185,7 +195,7 @@ class ACS:
         with np.errstate(divide='ignore'):  # ignore division by zero warnings
             return np.divide(1, matrix, out=np.zeros_like(matrix), where=mask)
 
-    def get_probabilities_matrix(self):
+    def get_probabilities_matrix(self) -> np.ndarray:
         """
         Get the updated matrix of probabilities of choosing an arc.
 
@@ -193,7 +203,7 @@ class ACS:
             None.
 
         Returns:
-            None.
+            A matrix(ndarray) of probabilities of choosing an arc.
         """
 
         return np.multiply(np.power(self.matrix_pheromones, self.alpha),
@@ -224,12 +234,36 @@ class ACS:
                               k=self.ants_num)
 
     def run(self):
+        # Starting initial matrixes
         self.normalized_matrix_heuristics = self.get_normalized_matrix(
             self.matrix_heuristics)  # candidate to go on PROBLEM MODEL
-        self.t_delta = self.get_t_delta(self.matrix_costs)
+        self.t_delta = self.get_initial_t_delta(self.matrix_costs)
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
         self.matrix_probabilities = self.get_probabilities_matrix()
 
+        # Greedy ants to find the best initial solution
+        greedy_ant = self.model_ant(self.nodes,
+                                    self.demands_array,
+                                    self.matrix_probabilities,
+                                    self.matrix_costs,
+                                    self.max_capacity,
+                                    self.tare,
+                                    self.q0,
+                                    self.model_problem)
+
+        greedy_ant_best_solution = (None, np.inf, None, None, None)
+        for _ in range(self.ants_num):
+            solution = greedy_ant.generate_solution()
+            if solution[1] < greedy_ant_best_solution[1]:
+                greedy_ant_best_solution = solution
+
+        # Initial t_min and t_max and new t_delta
+        self.t_min, self.t_max = self.calculate_t_min_t_max(
+            greedy_ant_best_solution[1])
+        self.t_delta = (self.t_min + self.t_max) / 2
+        self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
+
+        # Create ants
         ant = self.model_ant(self.nodes,
                              self.demands_array,
                              self.matrix_probabilities,
@@ -241,7 +275,6 @@ class ACS:
 
         global_best_solution = (None, np.inf, None, None, None)
         best_solutions = []
-
         max_outputs_to_print = 10
         outputs_to_print = []
         start_time = time.time()
@@ -256,14 +289,16 @@ class ACS:
                 solution = ant.generate_solution(candidate_starting_nodes)
                 iterations_solutions.append(solution)
 
-                # Update pheromones matrix with local update
-                self.evaporate_pheromones_matrix()
-                self.update_pheromones_matrix(
-                    solution[2], solution[1], self.p)
+                if len(solution[0]) == self.k_optimal:
+                    # Update pheromones matrix with local update
+                    self.evaporate_pheromones_matrix()
+                    self.update_pheromones_matrix(
+                        solution[2], solution[1], self.p)
+                    self.set_bounds_to_pheromones_matrix()
 
-                # Update probabilities matrix
-                self.matrix_probabilities = self.get_probabilities_matrix()
-                ant.set_probabilities_matrix(self.matrix_probabilities)
+                    # Update probabilities matrix
+                    self.matrix_probabilities = self.get_probabilities_matrix()
+                    ant.set_probabilities_matrix(self.matrix_probabilities)
 
             # Sort solutions by fitness and filter by k_optimal
             iterations_solutions_sorted = sorted(iterations_solutions,
@@ -300,11 +335,6 @@ class ACS:
             self.update_pheromones_matrix(global_best_solution[2],
                                           global_best_solution[1])
 
-            if i > 0:
-                if self.work_with_candidate_nodes:
-                    candidate_starting_nodes = \
-                        self.get_candidate_starting_nodes(best_solutions)
-
             # Update t_min and t_max and set bounds to pheromones matrix
             self.t_min, self.t_max = self.calculate_t_min_t_max(
                 global_best_solution[1])
@@ -316,6 +346,10 @@ class ACS:
 
             # Append iteration best solution to list of best solutions
             best_solutions.append(iteration_best_solution)
+
+            if self.work_with_candidate_nodes:
+                candidate_starting_nodes = self.get_candidate_starting_nodes(
+                    best_solutions)
 
             # Print iteration output
             if self.ipynb:
@@ -341,6 +375,7 @@ class ACS:
 
         print('Best solution: {}'.format(
             (global_best_solution[1],
+             global_best_solution[0],
              len(global_best_solution[0]),
              global_best_solution[4])))
         print('Best 5 solutions: {}'

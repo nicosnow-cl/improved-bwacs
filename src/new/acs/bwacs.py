@@ -187,7 +187,7 @@ class BWACS(ACS):
 
         self.normalized_matrix_heuristics = self.get_normalized_matrix(
             self.matrix_heuristics)  # candidate to go on PROBLEM MODEL
-        self.t_delta = self.get_t_delta(self.matrix_costs)
+        self.t_delta = self.get_initial_t_delta(self.matrix_costs)
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
         self.matrix_probabilities = self.get_probabilities_matrix()
 

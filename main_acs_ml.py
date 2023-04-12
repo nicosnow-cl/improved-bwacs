@@ -40,7 +40,7 @@ clusters, arcs_clusters, _, _, _ = kmeans.run()
 parameters = {
     'alpha': ALPHA,
     'ants_num': len(clients),
-    'arcs_clusters': arcs_clusters,
+    # 'arcs_clusters': arcs_clusters,
     'beta': BETA,
     'demands_array': np.array([demands_array[node] for node in demands_array]),
     'k_optimal': k,
