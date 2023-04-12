@@ -10,12 +10,14 @@ from ..models import ProblemModel
 class ACS:
     alpha: float
     ants_num: int
-    beta: float
+    arcs_clusters_importance: float
     arcs_clusters: List[Tuple]
+    beta: float
     demands_array: np.ndarray
     evaporation_rate: float
     ipynb: bool
     k_optimal: int
+    local_pheromone_update: bool
     matrix_costs: np.ndarray
     matrix_heuristics: np.ndarray
     matrix_pheromones: np.ndarray
@@ -36,9 +38,11 @@ class ACS:
     work_with_candidate_nodes: bool
 
     def __init__(self, **kwargs):
-        self.ipynb = False
-        self.work_with_candidate_nodes = False
         self.arcs_clusters = None
+        self.arcs_clusters_importance = 1.5
+        self.ipynb = False
+        self.local_pheromone_update = False
+        self.work_with_candidate_nodes = False
 
         self.__dict__.update(kwargs)
 
@@ -65,7 +69,7 @@ class ACS:
             flattened_arcs_clusters = get_flattened_list(self.arcs_clusters)
 
             for i, j in flattened_arcs_clusters:
-                matrix_pheromones[i][j] += t_delta
+                matrix_pheromones[i][j] *= self.arcs_clusters_importance
 
         return matrix_pheromones
 
@@ -224,10 +228,12 @@ class ACS:
             list: A list of candidate starting nodes for the ants.
         """
 
+        solutions_sorted = sorted(
+            filter(lambda sol: sol[1], solutions), key=lambda x: x[1])
         best_starting_nodes = {route[1]
-                               for solution in solutions
+                               for solution in solutions_sorted[:10]
                                for route in solution[0]}
-        weights = {node: 2 if node in best_starting_nodes else 1
+        weights = {node: 1.5 if node in best_starting_nodes else 1
                    for node in self.nodes}
 
         return random.choices(self.nodes, weights=weights.values(),
@@ -262,6 +268,7 @@ class ACS:
             greedy_ant_best_solution[1])
         self.t_delta = (self.t_min + self.t_max) / 2
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
+        self.matrix_probabilities = self.get_probabilities_matrix()
 
         # Create ants
         ant = self.model_ant(self.nodes,
@@ -289,11 +296,14 @@ class ACS:
                 solution = ant.generate_solution(candidate_starting_nodes)
                 iterations_solutions.append(solution)
 
-                if len(solution[0]) == self.k_optimal:
+                if self.local_pheromone_update and \
+                        len(solution[0]) == self.k_optimal:
+                    ant_factor = (1 - self.p) / self.ants_num
+
                     # Update pheromones matrix with local update
-                    self.evaporate_pheromones_matrix()
+                    # self.evaporate_pheromones_matrix()
                     self.update_pheromones_matrix(
-                        solution[2], solution[1], self.p)
+                        solution[2], solution[1], ant_factor)
                     self.set_bounds_to_pheromones_matrix()
 
                     # Update probabilities matrix
