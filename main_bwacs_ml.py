@@ -10,15 +10,15 @@ from src.new.models import VRPModel
 from src.readers import ReaderCVRPLIB
 
 
-ALPHA = 2
+ALPHA = 1
 BETA = 2
 DELTA = 2
 INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
-MAX_ITERATIONS = 300
+MAX_ITERATIONS = 200
 P = 0.2
 P_M = 0.3
 Q_0 = 0.8
-SIMILARITY_PERCENTAGE_TO_DO_RESTART = 45
+SIMILARITY_PERCENTAGE_TO_DO_RESTART = 50
 TARE_PERCENTAGE = 0.15
 
 
@@ -47,12 +47,14 @@ clusters, arcs_clusters, _, _, _ = kmeans.run()
 parameters_ants = {
     'alpha': ALPHA,
     'ants_num': len(clients),
-    # 'arcs_clusters': arcs_clusters,
+    'arcs_clusters_importance': 1.5,
+    'arcs_clusters': arcs_clusters,
     'beta': BETA,
     'delta': DELTA,
     'demands_array': np.array([demands_array[node] for node in demands_array]),
     'ipynb': True,
     'k_optimal': k,
+    'local_pheromone_update': True,
     'matrix_costs': matrix_costs,
     'matrix_heuristics': matrix_costs,
     'max_capacity': max_capacity,
@@ -66,7 +68,7 @@ parameters_ants = {
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
     'work_with_candidate_nodes': True,
-    # 'model_ls_it': GeneralVNS,
+    'model_ls_it': GeneralVNS,
 }
 
 bwacs = BWACS(**parameters_ants)

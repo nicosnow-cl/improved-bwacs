@@ -280,12 +280,12 @@ class ACS:
                              self.q0,
                              self.model_problem)
 
-        global_best_solution = (None, np.inf, None, None, None)
         best_solutions = []
+        candidate_starting_nodes = []
+        global_best_solution = (None, np.inf, None, None, None)
         max_outputs_to_print = 10
         outputs_to_print = []
         start_time = time.time()
-        candidate_starting_nodes = []
 
         # Loop over max_iterations
         for i in range(self.max_iterations):
@@ -296,6 +296,7 @@ class ACS:
                 solution = ant.generate_solution(candidate_starting_nodes)
                 iterations_solutions.append(solution)
 
+                # Local pheromone update
                 if self.local_pheromone_update and \
                         len(solution[0]) == self.k_optimal:
                     ant_factor = (1 - self.p) / self.ants_num

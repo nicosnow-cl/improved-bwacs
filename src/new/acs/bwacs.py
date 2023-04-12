@@ -73,7 +73,7 @@ class BWACS(ACS):
                                                          restart_iteration)
         t_threshold = self.get_t_threshold(solution_arcs)
 
-        mutation_value = self.p * (mutation_intensity * t_threshold) * 0.001
+        mutation_value = (self.p * mutation_intensity * t_threshold) * 0.00005
 
         # Use triu_indices to get upper triangle indices
         iu = np.triu_indices(self.matrix_pheromones.shape[0], k=1)
@@ -191,6 +191,30 @@ class BWACS(ACS):
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
         self.matrix_probabilities = self.get_probabilities_matrix()
 
+        # Greedy ants to find the best initial solution
+        greedy_ant = self.model_ant(self.nodes,
+                                    self.demands_array,
+                                    self.matrix_probabilities,
+                                    self.matrix_costs,
+                                    self.max_capacity,
+                                    self.tare,
+                                    self.q0,
+                                    self.model_problem)
+
+        greedy_ant_best_solution = (None, np.inf, None, None, None)
+        for _ in range(self.ants_num):
+            solution = greedy_ant.generate_solution()
+            if solution[1] < greedy_ant_best_solution[1]:
+                greedy_ant_best_solution = solution
+
+        # Initial t_min and t_max and new t_delta
+        self.t_min, self.t_max = self.calculate_t_min_t_max(
+            greedy_ant_best_solution[1])
+        self.t_delta = (self.t_min + self.t_max) / 2
+        self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
+        self.matrix_probabilities = self.get_probabilities_matrix()
+
+        # Create ants
         ant = self.model_ant(self.nodes,
                              self.demands_array,
                              self.matrix_probabilities,
@@ -210,14 +234,13 @@ class BWACS(ACS):
                                      self.max_iterations,
                                      self.model_problem)
 
-        global_best_solution = (None, np.inf, None, None, None)
         best_solutions = []
-
+        candidate_starting_nodes = []
+        global_best_solution = (None, np.inf, None, None, None)
         max_outputs_to_print = 10
         outputs_to_print = []
-        start_time = time.time()
         restart_iteration = 0
-        candidate_starting_nodes = []
+        start_time = time.time()
 
         # Loop over max_iterations
         for i in range(self.max_iterations):
@@ -225,15 +248,30 @@ class BWACS(ACS):
 
             # Generate solutions for each ant
             for _ in range(self.ants_num):
-                iterations_solutions.append(
-                    ant.generate_solution(candidate_starting_nodes))
+                solution = ant.generate_solution(candidate_starting_nodes)
+                iterations_solutions.append(solution)
+
+                # Local pheromone update
+                if self.local_pheromone_update and \
+                        len(solution[0]) == self.k_optimal:
+                    ant_factor = (1 - self.p) / self.ants_num
+
+                    # Update pheromones matrix with local update
+                    # self.evaporate_pheromones_matrix()
+                    self.update_pheromones_matrix(
+                        solution[2], solution[1], ant_factor)
+                    self.set_bounds_to_pheromones_matrix()
+
+                    # Update probabilities matrix
+                    self.matrix_probabilities = self.get_probabilities_matrix()
+                    ant.set_probabilities_matrix(self.matrix_probabilities)
 
             # Sort solutions by fitness and filter by k_optimal
             iterations_solutions_sorted = sorted(iterations_solutions,
                                                  key=lambda d: d[1])
-            iterations_solutions_sorted_and_restricted = list(filter(
-                lambda sol: len(sol[0]) == self.k_optimal,
-                iterations_solutions_sorted))
+            iterations_solutions_sorted_and_restricted = [
+                solution for solution in iterations_solutions_sorted
+                if len(solution[0]) == self.k_optimal]
 
             # Select best and worst solutions and compute average cost
             if iterations_solutions_sorted_and_restricted:
@@ -268,32 +306,27 @@ class BWACS(ACS):
             # Evaporate pheromones and update pheromone matrix by BWACS
             self.evaporate_pheromones_matrix()
             self.update_pheromones_matrix(global_best_solution[2],
-                                          global_best_solution[1],
-                                          self.p)
+                                          global_best_solution[1])
             self.penalize_pheromones_matrix(global_best_solution[2],
                                             iteration_worst_solution[2])
-
-            # Mutate pheromone matrix and check stagnation
-            if i > 0:
-                if self.work_with_candidate_nodes:
-                    candidate_starting_nodes = \
-                        self.get_candidate_starting_nodes(best_solutions)
-
-                if self.reach_stagnation(iteration_best_solution[2],
-                                         iteration_worst_solution[2]):
-                    iteration_output.append('    > Stagnation detected!')
-                    self.t_delta = (self.t_min + self.t_max) / 2
-                    self.matrix_pheromones = self.create_pheromones_matrix(
-                        self.t_delta)
-                    restart_iteration = i
-
-                if restart_iteration > 0:
-                    self.mutate_pheromones_matrix(global_best_solution[2],
-                                                  i, restart_iteration)
 
             # Update t_min and t_max and set bounds to pheromones matrix
             self.t_min, self.t_max = self.calculate_t_min_t_max(
                 global_best_solution[1])
+
+            # Mutate pheromone matrix and check stagnation
+            if self.reach_stagnation(iteration_best_solution[2],
+                                     iteration_worst_solution[2]):
+                iteration_output.append('    > Stagnation detected!')
+                self.t_delta = (self.t_min + self.t_max) / 2
+                self.matrix_pheromones = self.create_pheromones_matrix(
+                    self.t_delta)
+                restart_iteration = i
+
+            if restart_iteration > 0:
+                self.mutate_pheromones_matrix(global_best_solution[2],
+                                              i, restart_iteration)
+
             self.set_bounds_to_pheromones_matrix()
 
             self.matrix_probabilities = self.get_probabilities_matrix()
@@ -301,6 +334,10 @@ class BWACS(ACS):
 
             # Append iteration best solution to list of best solutions
             best_solutions.append(iteration_best_solution)
+
+            if self.work_with_candidate_nodes:
+                candidate_starting_nodes = self.get_candidate_starting_nodes(
+                    best_solutions)
 
             # Print iteration output
             if self.ipynb:

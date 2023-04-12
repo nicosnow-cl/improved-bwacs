@@ -10,7 +10,7 @@ from src.readers import ReaderCVRPLIB
 ALPHA = 1
 BETA = 2
 INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
-MAX_ITERATIONS = 50
+MAX_ITERATIONS = 200
 P = 0.2
 Q_0 = 0.8
 TARE_PERCENTAGE = 0.15
@@ -37,7 +37,7 @@ parameters_kmeans = {
 kmeans = KMeans(**parameters_kmeans)
 clusters, arcs_clusters, _, _, _ = kmeans.run()
 
-parameters = {
+parameters_acs = {
     'alpha': ALPHA,
     'ants_num': len(clients),
     'arcs_clusters_importance': 1.5,
@@ -57,8 +57,8 @@ parameters = {
     'p': P,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
-    'work_with_candidate_nodes': True,
+    # 'work_with_candidate_nodes': True,
 }
 
-acs = ACS(**parameters)
+acs = ACS(**parameters_acs)
 acs.run()
