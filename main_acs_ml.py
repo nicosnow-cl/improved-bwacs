@@ -9,7 +9,7 @@ from src.readers import ReaderCVRPLIB
 
 ALPHA = 1
 BETA = 2
-INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
+INSTANCE = 'instances/CVRPLIB/CMT/CMT2'
 MAX_ITERATIONS = 200
 P = 0.2
 Q_0 = 0.8

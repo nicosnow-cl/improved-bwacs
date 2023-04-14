@@ -257,7 +257,6 @@ class BWACS(ACS):
                     ant_factor = (1 - self.p) / self.ants_num
 
                     # Update pheromones matrix with local update
-                    # self.evaporate_pheromones_matrix()
                     self.update_pheromones_matrix(
                         solution[2], solution[1], ant_factor)
                     self.set_bounds_to_pheromones_matrix()

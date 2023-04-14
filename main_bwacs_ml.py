@@ -13,7 +13,7 @@ from src.readers import ReaderCVRPLIB
 ALPHA = 1
 BETA = 2
 DELTA = 2
-INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
+INSTANCE = 'instances/CVRPLIB/CMT/CMT2'
 MAX_ITERATIONS = 200
 P = 0.2
 P_M = 0.3
@@ -60,6 +60,7 @@ parameters_ants = {
     'max_capacity': max_capacity,
     'max_iterations': MAX_ITERATIONS,
     'model_ant': FreeAnt,
+    # 'model_ls_it': GeneralVNS,
     'model_problem': VRPModel,
     'nodes': nodes,
     'p_m': P_M,
@@ -67,8 +68,7 @@ parameters_ants = {
     'percentage_of_similarity': SIMILARITY_PERCENTAGE_TO_DO_RESTART,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
-    'work_with_candidate_nodes': True,
-    'model_ls_it': GeneralVNS,
+    # 'work_with_candidate_nodes': True,
 }
 
 bwacs = BWACS(**parameters_ants)
