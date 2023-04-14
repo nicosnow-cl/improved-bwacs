@@ -43,7 +43,7 @@ parameters_acs = {
     'arcs_clusters_importance': 1.5,
     'arcs_clusters': arcs_clusters,
     'beta': BETA,
-    'demands_array': np.array([demands_array[node] for node in demands_array]),
+    'demands_array': [demands_array[node] for node in demands_array],
     'ipynb': True,
     'k_optimal': k,
     'local_pheromone_update': True,
