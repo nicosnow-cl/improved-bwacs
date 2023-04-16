@@ -110,13 +110,15 @@ class KMeans:
             self.max_iterations = math.ceil(
                 len(self.nodes) * limit_constraint)
 
-        iteration = 1
         best_clusters = None
-        best_total_cost = np.inf
-        best_unassigned_nodes = [[] for k in range(self.k_optimal)]
         best_constraint_clusters = None
         best_constraint_total_cost = np.inf
         best_constraint_unassigned_nodes = [[] for k in range(self.k_optimal)]
+        best_solutions = []
+        best_constraint_solutions = []
+        best_total_cost = np.inf
+        best_unassigned_nodes = [[] for k in range(self.k_optimal)]
+        iteration = 1
         max_stagnation = int((len(self.nodes)/10) * limit_constraint)
         stagnation = 0
 
@@ -182,6 +184,8 @@ class KMeans:
                 best_centroids = self.D[:]
                 best_unassigned_nodes = unass_nodes[:]
                 best_unassigned_nodes += 1
+
+                best_solutions.append(clusters[:])
             else:
                 stagnation += 1
 
@@ -199,6 +203,7 @@ class KMeans:
                 best_constraint_unassigned_nodes = unass_nodes[:]
                 stagnation = 0
 
+                best_constraint_solutions.append(clusters[:])
             if stagnation >= max_stagnation and not unass_nodes.size:
                 break
             else:
@@ -225,7 +230,8 @@ class KMeans:
                     clusters_arcs,
                     best_constraint_total_cost,
                     best_contraint_centroids,
-                    best_constraint_unassigned_nodes)
+                    best_constraint_unassigned_nodes,
+                    best_constraint_solutions)
         else:
             clusters_lst = [cluster.tolist()
                             for cluster in best_clusters]
@@ -236,4 +242,5 @@ class KMeans:
                     clusters_arcs,
                     best_total_cost,
                     best_centroids,
-                    best_unassigned_nodes)
+                    best_unassigned_nodes,
+                    best_solutions)

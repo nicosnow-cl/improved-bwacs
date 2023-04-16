@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import permutations
 
 from src.new.aco import FreeAnt
 from src.new.acs import ACS
@@ -9,7 +10,7 @@ from src.readers import ReaderCVRPLIB
 
 ALPHA = 1
 BETA = 2
-INSTANCE = 'instances/CVRPLIB/CMT/CMT2'
+INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
 MAX_ITERATIONS = 200
 P = 0.2
 Q_0 = 0.8
@@ -35,13 +36,22 @@ parameters_kmeans = {
 }
 
 kmeans = KMeans(**parameters_kmeans)
-clusters, arcs_clusters, _, _, _ = kmeans.run()
+clusters, arcs_clusters_lst, _, _, _, solutions = kmeans.run()
+
+best_solutions_clusters = solutions[:]
+best_solutions_clusters.reverse()
+best_solutions_clusters = best_solutions_clusters[:int(k/2)]
+best_solutions_clusters_arcs = []
+for solution_clusters in best_solutions_clusters:
+    clusters_arcs = [list(permutations(cluster, 2))
+                     for cluster in solution_clusters]
+    best_solutions_clusters_arcs.append(clusters_arcs)
 
 parameters_acs = {
     'alpha': ALPHA,
     'ants_num': len(clients),
-    'arcs_clusters_importance': 1.5,
-    'arcs_clusters': arcs_clusters,
+    'arcs_clusters_importance': .5,  # t_deta[i][j] *= (1 + 0.5)
+    'arcs_clusters_lst': best_solutions_clusters_arcs,
     'beta': BETA,
     'demands_array': [demands_array[node] for node in demands_array],
     'ipynb': True,
@@ -57,7 +67,7 @@ parameters_acs = {
     'p': P,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
-    # 'work_with_candidate_nodes': True,
+    'work_with_candidate_nodes': True,
 }
 
 acs = ACS(**parameters_acs)

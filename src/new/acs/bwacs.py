@@ -73,7 +73,7 @@ class BWACS(ACS):
                                                          restart_iteration)
         t_threshold = self.get_t_threshold(solution_arcs)
 
-        mutation_value = (self.p * mutation_intensity * t_threshold) * 0.00005
+        mutation_value = (self.p * mutation_intensity * t_threshold) * 0.00001
 
         # Use triu_indices to get upper triangle indices
         iu = np.triu_indices(self.matrix_pheromones.shape[0], k=1)

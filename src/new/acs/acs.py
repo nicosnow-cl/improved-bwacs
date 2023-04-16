@@ -11,7 +11,7 @@ class ACS:
     alpha: float
     ants_num: int
     arcs_clusters_importance: float
-    arcs_clusters: List[Tuple]
+    arcs_clusters_lst: List[List[Tuple]]
     beta: float
     demands_array: np.ndarray
     evaporation_rate: float
@@ -38,11 +38,13 @@ class ACS:
     work_with_candidate_nodes: bool
 
     def __init__(self, **kwargs):
-        self.arcs_clusters = None
         self.arcs_clusters_importance = 1.5
+        self.arcs_clusters_lst = None
         self.ipynb = False
         self.local_pheromone_update = False
         self.work_with_candidate_nodes = False
+        self.t_min = 0
+        self.t_max = 1
 
         self.__dict__.update(kwargs)
 
@@ -62,14 +64,21 @@ class ACS:
             The matrix has shape (num_nodes, num_nodes), where num_nodes
             is the number of nodes in the problem.
         """
+
         shape = len(self.nodes)
         matrix_pheromones = np.full((shape, shape), t_delta)
 
-        if self.arcs_clusters:
-            flattened_arcs_clusters = get_flattened_list(self.arcs_clusters)
+        if self.arcs_clusters_lst:
+            num_clusters = len(self.arcs_clusters_lst)
+            clusters_factor = 1 + \
+                (self.arcs_clusters_importance / num_clusters)
 
-            for i, j in flattened_arcs_clusters:
-                matrix_pheromones[i][j] *= self.arcs_clusters_importance
+            clusters_arcs_flattened = []
+            for clusters_arcs in self.arcs_clusters_lst:
+                clusters_arcs_flattened += get_flattened_list(clusters_arcs)
+
+            for i, j in clusters_arcs_flattened:
+                matrix_pheromones[i][j] *= clusters_factor
 
         return matrix_pheromones
 
@@ -103,24 +112,12 @@ class ACS:
             trail levels.
         """
 
-        # t_max = (1 / self.evaporation_rate) * (1 / best_solution_quality)
-
-        # max_probability = self.matrix_probabilities.max()
-        # n_root_probabilitiy = max_probability ** -len(self.nodes)
-
-        # a = (2 * t_max) * (1 - n_root_probabilitiy)
-        # b = (len(self.nodes) - 2) * n_root_probabilitiy
-
-        # t_min = a / b
         n = len(self.nodes)
 
         t_max = 1 / (self.p * best_solution_quality)
-
         t_min = t_max * (1 - (0.05) ** (1 / n)) / \
             ((n / 2 - 1) * (0.05) ** (1 / n))
 
-        # print(f'max probability: {max_probability}')
-        # print('t_min: {: .20f}'.format(t_min))
         return t_min, t_max
 
     def get_acs_fitness(self, solutin_quality: float) -> float:
@@ -172,11 +169,11 @@ class ACS:
             None.
         """
 
-        pheromones_amout = factor * self.get_acs_fitness(solution_quality)
+        pheromones_amount = factor * self.get_acs_fitness(solution_quality)
 
         for arcs_idxs in solution_arcs:
             self.matrix_pheromones[arcs_idxs[:, 0],
-                                   arcs_idxs[:, 1]] += pheromones_amout
+                                   arcs_idxs[:, 1]] += pheromones_amount
 
     def set_bounds_to_pheromones_matrix(self) -> None:
         """
