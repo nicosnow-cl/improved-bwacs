@@ -1,5 +1,6 @@
-import numpy as np
 from itertools import permutations
+from threading import Thread
+import numpy as np
 
 
 from src.new.aco import FreeAnt
@@ -19,7 +20,7 @@ MAX_ITERATIONS = 200
 P = 0.2
 P_M = 0.3
 Q_0 = 0.8
-SIMILARITY_PERCENTAGE_TO_DO_RESTART = 45
+SIMILARITY_PERCENTAGE_TO_DO_RESTART = 50
 TARE_PERCENTAGE = 0.15
 
 
@@ -82,4 +83,7 @@ parameters_ants = {
 }
 
 bwacs = BWACS(**parameters_ants)
-global_best_solution, best_solutions_set = bwacs.run()
+
+# Run the algorithm in a new thread
+thread = Thread(target=bwacs.run)
+thread.start()

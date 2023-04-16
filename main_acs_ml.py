@@ -1,5 +1,6 @@
-import numpy as np
 from itertools import permutations
+from threading import Thread
+import numpy as np
 
 from src.new.aco import FreeAnt
 from src.new.acs import ACS
@@ -71,4 +72,7 @@ parameters_acs = {
 }
 
 acs = ACS(**parameters_acs)
-acs.run()
+
+# Run the algorithm in a new thread
+thread = Thread(target=acs.run)
+thread.start()

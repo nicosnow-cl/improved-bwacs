@@ -40,8 +40,8 @@ class BWACS(ACS):
             None
         """
 
-        global_best_solution_arcs_set = set(
-            get_flattened_list(global_best_solution_arcs, tuple))
+        global_best_solution_arcs_set = get_flattened_list(
+            global_best_solution_arcs, tuple)
 
         for route in current_worst_solution_arcs:
             for i, j in route:
