@@ -73,16 +73,28 @@ class BWACS(ACS):
                                                          restart_iteration)
         t_threshold = self.get_t_threshold(solution_arcs)
 
-        mutation_value = (self.p * mutation_intensity * t_threshold) * 0.00001
+        # MUTATION on every element of the matrix
+        # mutation_value = (self.p * mutation_intensity * t_threshold) \
+        # * 0.00001
 
-        # Use triu_indices to get upper triangle indices
-        iu = np.triu_indices(self.matrix_pheromones.shape[0], k=1)
+        # # Use triu_indices to get upper triangle indices
+        # iu = np.triu_indices(self.matrix_pheromones.shape[0], k=1)
 
-        # Update elements in upper triangle with random mutations
-        mask = np.random.rand(len(iu[0])) < self.p_m
-        mut = np.random.choice([-1, 1], size=len(iu[0])) * mutation_value
+        # # Update elements in upper triangle with random mutations
+        # mask = np.random.rand(len(iu[0])) < self.p_m
+        # mut = np.random.choice([-1, 1], size=len(iu[0])) * mutation_value
 
-        self.matrix_pheromones[iu] += mask * mut
+        # self.matrix_pheromones[iu] += mask * mut
+
+        # MUTATION on every row of the matrix
+        for i in range(self.matrix_pheromones.shape[0]):
+            for j in range(i + 1, self.matrix_pheromones.shape[0]):
+                if np.random.rand() < self.p_m:
+                    mutation_value = (self.p * mutation_intensity *
+                                      t_threshold) * 0.00001
+                    mutation_value *= np.random.choice([-1, 1])
+
+                    self.matrix_pheromones[i][j] += mutation_value
 
     def get_mutation_intensity(self,
                                iteration: int,

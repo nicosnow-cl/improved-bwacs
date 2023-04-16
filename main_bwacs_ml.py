@@ -13,13 +13,13 @@ from src.readers import ReaderCVRPLIB
 
 ALPHA = 1
 BETA = 2
-DELTA = 2
+DELTA = 4
 INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
 MAX_ITERATIONS = 200
 P = 0.2
 P_M = 0.3
 Q_0 = 0.8
-SIMILARITY_PERCENTAGE_TO_DO_RESTART = 55
+SIMILARITY_PERCENTAGE_TO_DO_RESTART = 45
 TARE_PERCENTAGE = 0.15
 
 
@@ -57,7 +57,7 @@ for solution_clusters in best_solutions_clusters:
 parameters_ants = {
     'alpha': ALPHA,
     'ants_num': len(clients),
-    'arcs_clusters_importance': .5,  # t_deta[i][j] *= (1 + 0.5)
+    'arcs_clusters_importance': .4,  # t_deta[i][j] *= (1 + 0.4)
     'arcs_clusters_lst': best_solutions_clusters_arcs,
     'beta': BETA,
     'delta': DELTA,
