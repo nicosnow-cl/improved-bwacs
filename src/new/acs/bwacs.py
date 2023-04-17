@@ -90,7 +90,8 @@ class BWACS(ACS):
         for i in range(self.matrix_pheromones.shape[0]):
             for j in range(i + 1, self.matrix_pheromones.shape[0]):
                 if np.random.rand() < self.p_m:
-                    mutation_value = self.p * mutation_intensity * t_threshold
+                    mutation_value = (
+                        self.p * mutation_intensity * t_threshold) * 0.1
                     mutation_value *= np.random.choice([-1, 1])
 
                     self.matrix_pheromones[i][j] += mutation_value

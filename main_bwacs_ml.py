@@ -80,13 +80,13 @@ parameters_ants = {
     'demands_array': demands_array,
     'ipynb': True,
     'k_optimal': k,
-    # 'local_pheromone_update': True,
+    'local_pheromone_update': True,
     'matrix_costs': matrix_distances,
     'matrix_heuristics': matrix_heuristics,
     'max_capacity': max_capacity,
     'max_iterations': MAX_ITERATIONS,
     'model_ant': FreeAnt,
-    # 'model_ls_it': GeneralVNS,
+    'model_ls_it': GeneralVNS,
     'model_problem': VRPModel,
     'nodes': nodes,
     'p_m': P_M,
@@ -94,12 +94,12 @@ parameters_ants = {
     'percentage_of_similarity': SIMILARITY_PERCENTAGE_TO_DO_RESTART,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
-    # 'work_with_candidate_nodes': True,
+    'work_with_candidate_nodes': True,
 }
 
 bwacs = BWACS(**parameters_ants)
-bwacs.run()
+# bwacs.run()
 
 # Run the algorithm in a new thread
-# thread = Thread(target=bwacs.run)
-# thread.start()
+thread = Thread(target=bwacs.run)
+thread.start()
