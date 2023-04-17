@@ -30,7 +30,7 @@ def get_saving_matrix(depot, nodes, matrix_distances):
 
     # All zeros values turn to 1
     saving_matrix = np.where(saving_matrix == 0, 1, saving_matrix)
-    saving_matrix = 1 / saving_matrix
+
     return saving_matrix
 
 # (Benito Quintanilla, 2015)
@@ -40,8 +40,8 @@ def get_saving_matrix_2015(depot,
                            nodes,
                            demands,
                            matrix_distances,
-                           lamb=1,
-                           gamma=1,
+                           lamb=2,
+                           mu=1,
                            nu=1):
     depot_idx = nodes.index(depot)
     shape = matrix_distances.shape
@@ -55,17 +55,13 @@ def get_saving_matrix_2015(depot,
                 d_i0 = matrix_distances[i][depot]
                 d_ij = matrix_distances[i][j]
                 d_j0 = matrix_distances[j][depot]
-                mean_demands = (demands[i] + demands[j]) / 2
-                utilization_factor = demands[i] + demands[j]
-                utilization = (nu * utilization_factor / mean_demands)
-                saving = d_i0 + d_0j - (lamb * d_ij) - \
-                    (gamma * abs(d_0i - d_j0)) + utilization
+                mean_demands = np.mean(demands)
+                utilization = (demands[i] + demands[j]) / mean_demands
+                saving = d_i0 + d_0j - (lamb * d_ij) + \
+                    (mu * abs(d_0i - d_j0)) + (nu * utilization)
                 saving_matrix[i][j] = saving
 
-    # All zeros values turn to 1 for first row and column
-    saving_matrix[0:] = np.where(saving_matrix[0:] == 0, 1, saving_matrix[0:])
-    saving_matrix[:, 0:] = np.where(
-        saving_matrix[:, 0:] == 0, 1, saving_matrix[:, 0:])
+    # All zeros values turn to 1
+    saving_matrix = np.where(saving_matrix == 0, 1, saving_matrix)
 
-    saving_matrix = 1 / saving_matrix
     return saving_matrix

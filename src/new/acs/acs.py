@@ -28,7 +28,6 @@ class ACS:
     model_local_search: Any
     model_problem: ProblemModel
     nodes: List[int]
-    normalized_matrix_heuristics: np.ndarray
     p: float
     q0: float
     t_delta: float
@@ -208,8 +207,7 @@ class ACS:
         """
 
         return np.multiply(np.power(self.matrix_pheromones, self.alpha),
-                           np.power(self.normalized_matrix_heuristics,
-                                    self.beta))
+                           self.matrix_heuristics)
 
     def get_candidate_starting_nodes(self, solutions):
         """
@@ -238,8 +236,6 @@ class ACS:
 
     def run(self):
         # Starting initial matrixes
-        self.normalized_matrix_heuristics = self.get_normalized_matrix(
-            self.matrix_heuristics)  # candidate to go on PROBLEM MODEL
         self.t_delta = self.get_initial_t_delta(self.matrix_costs)
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
         self.matrix_probabilities = self.get_probabilities_matrix()

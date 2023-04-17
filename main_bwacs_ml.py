@@ -5,17 +5,19 @@ import numpy as np
 
 from src.new.aco import FreeAnt
 from src.new.acs import BWACS
-from src.new.helpers import get_coords_matrix, get_distances_matrix, get_saving_matrix, get_saving_matrix_2015
+from src.new.helpers import get_coords_matrix, get_distances_matrix
 from src.new.machine_learning import KMeans
 from src.new.metaheuristics import GeneralVNS
 from src.new.models import VRPModel
 from src.readers import ReaderCVRPLIB
+from src.new.heuristics import HeuristicModel
 
 
-ALPHA = 2
+ALPHA = 1
 BETA = 2
-DELTA = 4
-INSTANCE = 'instances/CVRPLIB/CMT/CMT3'
+GAMMA = 1
+DELTA = 2
+INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
 MAX_ITERATIONS = 200
 P = 0.2
 P_M = 0.3
@@ -34,9 +36,18 @@ loc_y_lst = [loc_y[node] for node in nodes]
 demands_array = [demands[node] for node in demands]
 matrix_coords = get_coords_matrix(nodes, loc_x_lst, loc_y_lst)
 matrix_distances = get_distances_matrix(nodes, matrix_coords)
-saving_matrix = get_saving_matrix(depot, nodes, matrix_distances)
-matrix_heuristics = matrix_distances * saving_matrix
 
+parameters_heuristics = {
+    'coords_x': loc_x_lst,
+    'coords_y': loc_y_lst,
+    'demands': demands_array,
+    'importance_distances': BETA,
+    'importance_savings': GAMMA,
+    'nodes': nodes,
+}
+
+heuristics = HeuristicModel(**parameters_heuristics)
+matrix_heuristics = heuristics.get_heuristic_matrix(['distance', 'saving'])
 
 parameters_kmeans = {
     'demands': np.array(demands_array),
@@ -62,7 +73,7 @@ for solution_clusters in best_solutions_clusters:
 parameters_ants = {
     'alpha': ALPHA,
     'ants_num': len(clients),
-    'arcs_clusters_importance': .4,  # t_deta[i][j] *= (1 + 0.4)
+    'arcs_clusters_importance': .5,  # t_delta[i][j] *= (1 + 0.5)
     'arcs_clusters_lst': best_solutions_clusters_arcs,
     'beta': BETA,
     'delta': DELTA,
@@ -75,7 +86,7 @@ parameters_ants = {
     'max_capacity': max_capacity,
     'max_iterations': MAX_ITERATIONS,
     'model_ant': FreeAnt,
-    'model_ls_it': GeneralVNS,
+    # 'model_ls_it': GeneralVNS,
     'model_problem': VRPModel,
     'nodes': nodes,
     'p_m': P_M,
