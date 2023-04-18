@@ -75,7 +75,7 @@ class BWACS(ACS):
 
         # MUTATION on every element of the matrix
         # mutation_value = (self.p * mutation_intensity * t_threshold) \
-        # * 0.00001
+        #     * 0.01
 
         # # Use triu_indices to get upper triangle indices
         # iu = np.triu_indices(self.matrix_pheromones.shape[0], k=1)
@@ -91,7 +91,7 @@ class BWACS(ACS):
             for j in range(i + 1, self.matrix_pheromones.shape[0]):
                 if np.random.rand() < self.p_m:
                     mutation_value = (
-                        self.p * mutation_intensity * t_threshold) * 0.1
+                        self.p * mutation_intensity * t_threshold) * 0.0005
                     mutation_value *= np.random.choice([-1, 1])
 
                     self.matrix_pheromones[i][j] += mutation_value
@@ -264,11 +264,11 @@ class BWACS(ACS):
                 # Local pheromone update
                 if self.local_pheromone_update and \
                         len(solution[0]) == self.k_optimal:
-                    ant_factor = (1 - self.p) / self.ants_num
+                    local_factor = self.p / self.ants_num
 
                     # Update pheromones matrix with local update
                     self.update_pheromones_matrix(
-                        solution[2], solution[1], ant_factor)
+                        solution[2], solution[1], local_factor)
                     self.set_bounds_to_pheromones_matrix()
 
                     # Update probabilities matrix
@@ -313,9 +313,12 @@ class BWACS(ACS):
                 global_best_solution = iteration_best_solution
 
             # Evaporate pheromones and update pheromone matrix by BWACS
+            global_factor = (self.ants_num * self.p) if \
+                self.local_pheromone_update else 1
             self.evaporate_pheromones_matrix()
             self.update_pheromones_matrix(global_best_solution[2],
-                                          global_best_solution[1])
+                                          global_best_solution[1],
+                                          global_factor)
             self.penalize_pheromones_matrix(global_best_solution[2],
                                             iteration_worst_solution[2])
 

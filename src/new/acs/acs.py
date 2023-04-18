@@ -2,8 +2,9 @@ from typing import Any, List, Tuple
 import numpy as np
 import random
 import time
+from sklearn.preprocessing import MinMaxScaler
 
-from ..helpers import same_line_print, get_flattened_list
+from ..helpers import same_line_print, get_flattened_list, get_inversed_matrix
 from ..models import ProblemModel
 
 
@@ -65,7 +66,7 @@ class ACS:
         """
 
         shape = len(self.nodes)
-        matrix_pheromones = np.full((shape, shape), t_delta)
+        matrix_pheromones = np.full((shape, shape), self.t_delta)
 
         if self.arcs_clusters_lst:
             num_clusters = len(self.arcs_clusters_lst)
@@ -78,6 +79,18 @@ class ACS:
 
             for i, j in clusters_arcs_flattened:
                 matrix_pheromones[i][j] *= clusters_factor
+
+        # if self.arcs_clusters_lst:
+        #     matrix_pheromones = np.full((shape, shape), self.t_max)
+        #     clusters_arcs_flattened = []
+
+        #     for clusters_arcs in self.arcs_clusters_lst:
+        #         clusters_arcs_flattened += get_flattened_list(clusters_arcs)
+
+        #     for i in range(shape):
+        #         for j in range(shape):
+        #             if (i, j) not in clusters_arcs_flattened:
+        #                 matrix_pheromones[i][j] *= self.evaporation_rate
 
         return matrix_pheromones
 
@@ -206,7 +219,18 @@ class ACS:
             A matrix(ndarray) of probabilities of choosing an arc.
         """
 
+        # inv_distances_matrix = get_inversed_matrix(
+        #     self.matrix_costs)
+        # min_not_zero_value = inv_distances_matrix[
+        #     inv_distances_matrix != 0].min()
+        # max_value = inv_distances_matrix[inv_distances_matrix != np.inf].max()
+
+        # # Here we normalice the values between min distance and max distance.
+        # scaler = MinMaxScaler(feature_range=(min_not_zero_value, max_value))
+        # norm_matrix_pheromones = scaler.fit_transform(self.matrix_pheromones)
+
         return np.multiply(np.power(self.matrix_pheromones, self.alpha),
+                           #    np.power(self.matrix_heuristics, self.beta))
                            self.matrix_heuristics)
 
     def get_candidate_starting_nodes(self, solutions):

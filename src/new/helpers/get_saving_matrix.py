@@ -1,6 +1,8 @@
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 
+from ..helpers import get_inversed_matrix
+
 # Basic
 
 
@@ -18,12 +20,13 @@ def get_saving_matrix(depot, nodes, matrix_distances):
                 saving = (s_i0 + s_0j) - s_ij
                 saving_matrix[i][j] = saving
 
-    min_not_zero = saving_matrix[saving_matrix != 0].min()
+    inv_matrix_distances = get_inversed_matrix(matrix_distances)
+    min_not_zero_value = inv_matrix_distances[inv_matrix_distances != 0].min()
+    max_value = inv_matrix_distances[inv_matrix_distances != np.inf].max()
 
     # Here we normalice the values between min distance and max distance.
-    scaler = MinMaxScaler(feature_range=(min_not_zero, matrix_distances.max()))
-    scaler.fit(saving_matrix)
-    saving_matrix = scaler.transform(saving_matrix)
+    scaler = MinMaxScaler(feature_range=(min_not_zero_value, max_value))
+    saving_matrix = scaler.fit_transform(saving_matrix)
 
     return saving_matrix
 
@@ -55,11 +58,12 @@ def get_saving_matrix_2015(depot,
                     (mu * abs(d_0i - d_j0)) - (nu * utilization)
                 saving_matrix[i][j] = saving
 
-    min_not_zero = saving_matrix[saving_matrix != 0].min()
+    inv_matrix_distances = get_inversed_matrix(matrix_distances)
+    min_not_zero_value = inv_matrix_distances[inv_matrix_distances != 0].min()
+    max_value = inv_matrix_distances[inv_matrix_distances != np.inf].max()
 
     # Here we normalice the values between min distance and max distance.
-    scaler = MinMaxScaler(feature_range=(min_not_zero, matrix_distances.max()))
-    scaler.fit(saving_matrix)
-    saving_matrix = scaler.transform(saving_matrix)
+    scaler = MinMaxScaler(feature_range=(min_not_zero_value, max_value))
+    saving_matrix = scaler.fit_transform(saving_matrix)
 
     return saving_matrix

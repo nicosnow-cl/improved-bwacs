@@ -1,5 +1,6 @@
 from itertools import permutations
 from threading import Thread
+from math import ceil
 import numpy as np
 
 
@@ -13,16 +14,16 @@ from src.readers import ReaderCVRPLIB
 from src.new.heuristics import HeuristicModel
 
 
-ALPHA = 1.5
-BETA = 2
-GAMMA = 1
+ALPHA = 1
+BETA = 3.5  # 2, 3.5
+GAMMA = 2  # 1, 2
 DELTA = 2
 INSTANCE = 'instances/CVRPLIB/CMT/CMT2'
-MAX_ITERATIONS = 200
-P = 0.2
-P_M = 0.3
+MAX_ITERATIONS = 300
+P = 0.3
+P_M = 0.2
 Q_0 = 0.8
-SIMILARITY_PERCENTAGE_TO_DO_RESTART = 60
+SIMILARITY_PERCENTAGE_TO_DO_RESTART = 62
 TARE_PERCENTAGE = 0.15
 
 
@@ -47,7 +48,7 @@ parameters_heuristics = {
 }
 
 heuristics = HeuristicModel(**parameters_heuristics)
-matrix_heuristics = heuristics.get_heuristic_matrix(['distance'])
+matrix_heuristics = heuristics.get_heuristic_matrix(['distance', 'saving'])
 
 parameters_kmeans = {
     'demands': np.array(demands_array),
@@ -59,7 +60,7 @@ parameters_kmeans = {
 }
 
 kmeans = KMeans(**parameters_kmeans)
-clusters, arcs_clusters_lst, _, _, _, solutions = kmeans.run()
+clusters, arcs_clusters_lst, best_cost, _, _, solutions = kmeans.run()
 
 best_solutions_clusters = solutions[:]
 best_solutions_clusters.reverse()
@@ -72,15 +73,15 @@ for solution_clusters in best_solutions_clusters:
 
 parameters_ants = {
     'alpha': ALPHA,
-    'ants_num': len(clients),
-    # 'arcs_clusters_importance': .5,  # t_delta[i][j] *= (1 + 0.5)
-    # 'arcs_clusters_lst': best_solutions_clusters_arcs,
+    'ants_num': ceil(len(clients) / 2),
+    'arcs_clusters_importance': .5,  # t_delta[i][j] *= (1 + 0.5)
+    'arcs_clusters_lst': best_solutions_clusters_arcs,
     'beta': BETA,
     'delta': DELTA,
     'demands_array': demands_array,
     'ipynb': True,
     'k_optimal': k,
-    # 'local_pheromone_update': True,
+    'local_pheromone_update': True,
     'matrix_costs': matrix_distances,
     'matrix_heuristics': matrix_heuristics,
     'max_capacity': max_capacity,
