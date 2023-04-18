@@ -13,16 +13,16 @@ from src.readers import ReaderCVRPLIB
 from src.new.heuristics import HeuristicModel
 
 
-ALPHA = 1
+ALPHA = 1.5
 BETA = 2
 GAMMA = 1
 DELTA = 2
-INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
+INSTANCE = 'instances/CVRPLIB/CMT/CMT2'
 MAX_ITERATIONS = 200
 P = 0.2
 P_M = 0.3
 Q_0 = 0.8
-SIMILARITY_PERCENTAGE_TO_DO_RESTART = 55
+SIMILARITY_PERCENTAGE_TO_DO_RESTART = 60
 TARE_PERCENTAGE = 0.15
 
 
@@ -47,7 +47,7 @@ parameters_heuristics = {
 }
 
 heuristics = HeuristicModel(**parameters_heuristics)
-matrix_heuristics = heuristics.get_heuristic_matrix(['distance', 'saving'])
+matrix_heuristics = heuristics.get_heuristic_matrix(['distance'])
 
 parameters_kmeans = {
     'demands': np.array(demands_array),
@@ -73,14 +73,14 @@ for solution_clusters in best_solutions_clusters:
 parameters_ants = {
     'alpha': ALPHA,
     'ants_num': len(clients),
-    'arcs_clusters_importance': .5,  # t_delta[i][j] *= (1 + 0.5)
-    'arcs_clusters_lst': best_solutions_clusters_arcs,
+    # 'arcs_clusters_importance': .5,  # t_delta[i][j] *= (1 + 0.5)
+    # 'arcs_clusters_lst': best_solutions_clusters_arcs,
     'beta': BETA,
     'delta': DELTA,
     'demands_array': demands_array,
     'ipynb': True,
     'k_optimal': k,
-    'local_pheromone_update': True,
+    # 'local_pheromone_update': True,
     'matrix_costs': matrix_distances,
     'matrix_heuristics': matrix_heuristics,
     'max_capacity': max_capacity,
@@ -94,12 +94,12 @@ parameters_ants = {
     'percentage_of_similarity': SIMILARITY_PERCENTAGE_TO_DO_RESTART,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
-    'work_with_candidate_nodes': True,
+    # 'work_with_candidate_nodes': True,
 }
 
 bwacs = BWACS(**parameters_ants)
-# bwacs.run()
+bwacs.run()
 
 # Run the algorithm in a new thread
-thread = Thread(target=bwacs.run)
-thread.start()
+# thread = Thread(target=bwacs.run)
+# thread.start()

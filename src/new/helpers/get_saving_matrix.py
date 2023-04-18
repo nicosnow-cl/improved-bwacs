@@ -1,3 +1,4 @@
+from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 
 # Basic
@@ -14,22 +15,15 @@ def get_saving_matrix(depot, nodes, matrix_distances):
                 s_i0 = matrix_distances[i][depot]
                 s_0j = matrix_distances[depot][j]
                 s_ij = matrix_distances[i][j]
-                saving = s_i0 + s_0j - s_ij
+                saving = (s_i0 + s_0j) - s_ij
                 saving_matrix[i][j] = saving
 
-        # Here we normalice the values between 0 and 1.
-        # from sklearn.preprocessing import MinMaxScaler
-        # scaler = MinMaxScaler()
-        # scaler.fit(saving_matrix)
-        # saving_matrix = scaler.transform(saving_matrix)
+    min_not_zero = saving_matrix[saving_matrix != 0].min()
 
-        # for i in nodes:
-        #     if i != depot:
-        #         saving_matrix[depot][i] = 1
-        #         saving_matrix[i][depot] = 1
-
-    # All zeros values turn to 1
-    saving_matrix = np.where(saving_matrix == 0, 1, saving_matrix)
+    # Here we normalice the values between min distance and max distance.
+    scaler = MinMaxScaler(feature_range=(min_not_zero, matrix_distances.max()))
+    scaler.fit(saving_matrix)
+    saving_matrix = scaler.transform(saving_matrix)
 
     return saving_matrix
 
@@ -58,10 +52,14 @@ def get_saving_matrix_2015(depot,
                 mean_demands = np.mean(demands)
                 utilization = (demands[i] + demands[j]) / mean_demands
                 saving = d_i0 + d_0j - (lamb * d_ij) + \
-                    (mu * abs(d_0i - d_j0)) + (nu * utilization)
+                    (mu * abs(d_0i - d_j0)) - (nu * utilization)
                 saving_matrix[i][j] = saving
 
-    # All zeros values turn to 1
-    saving_matrix = np.where(saving_matrix == 0, 1, saving_matrix)
+    min_not_zero = saving_matrix[saving_matrix != 0].min()
+
+    # Here we normalice the values between min distance and max distance.
+    scaler = MinMaxScaler(feature_range=(min_not_zero, matrix_distances.max()))
+    scaler.fit(saving_matrix)
+    saving_matrix = scaler.transform(saving_matrix)
 
     return saving_matrix

@@ -2,7 +2,7 @@ from typing import List
 import numpy as np
 
 from ..helpers import get_coords_matrix, get_distances_matrix, \
-    get_saving_matrix_2015, get_normalized_matrix
+    get_saving_matrix, get_saving_matrix_2015, get_normalized_matrix
 
 
 class HeuristicModel:
@@ -46,6 +46,9 @@ class HeuristicModel:
                                                         self.demands,
                                                         matrix_distances,
                                                         2)
+                # matrix_savings = get_saving_matrix(self.nodes[0],
+                #                                    self.nodes,
+                #                                    matrix_distances)
                 parametrized_matrix = np.power(matrix_savings,
                                                self.importance_savings)
 

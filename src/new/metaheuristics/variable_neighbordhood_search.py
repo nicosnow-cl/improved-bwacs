@@ -217,7 +217,7 @@ class GeneralVNS():
             actual_solution_quality = sum(actual_solution_costs)
             neighborhoods = random.choices(neighborhoods_samples,
                                            weights=(5, 4, 3, 2, 1),
-                                           k=5)
+                                           k=self.k_number)
 
             for neighborhood in neighborhoods:
                 try:
