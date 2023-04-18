@@ -41,14 +41,14 @@ class HeuristicModel:
             elif heuristic == 'saving':
                 matrix_distances = get_distances_matrix(
                     self.nodes, self.matrix_coords, self.metric)
-                # matrix_savings = get_saving_matrix_2015(self.nodes[0],
-                #                                         self.nodes,
-                #                                         self.demands,
-                #                                         matrix_distances,
-                #                                         1, 0.6, 0.2)
-                matrix_savings = get_saving_matrix(self.nodes[0],
-                                                   self.nodes,
-                                                   matrix_distances)
+                matrix_savings = get_saving_matrix_2015(self.nodes[0],
+                                                        self.nodes,
+                                                        self.demands,
+                                                        matrix_distances,
+                                                        2, 1, 1)
+                # matrix_savings = get_saving_matrix(self.nodes[0],
+                #                                    self.nodes,
+                #                                    matrix_distances)
                 parametrized_matrix = np.power(matrix_savings,
                                                self.importance_savings)
 
