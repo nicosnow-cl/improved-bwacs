@@ -18,9 +18,9 @@ ALPHA = 1
 BETA = 3.5  # 2, 3.5
 GAMMA = 2  # 1, 2
 DELTA = 2
-INSTANCE = 'instances/CVRPLIB/CMT/CMT2'
+INSTANCE = 'instances/CVRPLIB/Golden/Golden_20'
 MAX_ITERATIONS = 300
-P = 0.3
+P = 0.2
 P_M = 0.2
 Q_0 = 0.8
 SIMILARITY_PERCENTAGE_TO_DO_RESTART = 60  # 45, 50, 55, 60, 62
@@ -34,53 +34,57 @@ depot, clients, loc_x, loc_y, demands, total_demand, max_capacity, k, \
 nodes = [depot] + clients
 loc_x_lst = [loc_x[node] for node in nodes]
 loc_y_lst = [loc_y[node] for node in nodes]
-demands_array = [demands[node] for node in demands]
+lst_demands = [demands[node] for node in demands]
 matrix_coords = get_coords_matrix(nodes, loc_x_lst, loc_y_lst)
 matrix_distances = get_distances_matrix(nodes, matrix_coords)
-
+k_optimal = ceil(sum(lst_demands) / max_capacity)
+# print(matrix_distances.min(), matrix_distances.max())
+# raise Exception
 parameters_heuristics = {
     'coords_x': loc_x_lst,
     'coords_y': loc_y_lst,
-    'demands': demands_array,
+    'demands': lst_demands,
     'importance_distances': BETA,
     'importance_savings': GAMMA,
     'nodes': nodes,
 }
 
 heuristics = HeuristicModel(**parameters_heuristics)
-matrix_heuristics = heuristics.get_heuristic_matrix(['distance', 'saving'])
+matrix_heuristics = heuristics.get_heuristic_matrix(['distance'])
+# print(matrix_heuristics.min(), matrix_heuristics.max())
+# raise Exception
+# parameters_kmeans = {
+#     'demands': np.array(demands_array),
+#     'k_optimal': k,
+#     'matrix_coords': matrix_coords[:],
+#     'matrix_distances': matrix_distances[:],
+#     'max_capacity': max_capacity,
+#     'nodes': nodes[:],
+# }
 
-parameters_kmeans = {
-    'demands': np.array(demands_array),
-    'k_optimal': k,
-    'matrix_coords': matrix_coords[:],
-    'matrix_distances': matrix_distances[:],
-    'max_capacity': max_capacity,
-    'nodes': nodes[:],
-}
+# kmeans = KMeans(**parameters_kmeans)
+# clusters, arcs_clusters_lst, best_cost, _, _, solutions = kmeans.run()
 
-kmeans = KMeans(**parameters_kmeans)
-clusters, arcs_clusters_lst, best_cost, _, _, solutions = kmeans.run()
-
-best_solutions_clusters = solutions[:]
-best_solutions_clusters.reverse()
-best_solutions_clusters = best_solutions_clusters[:int(k/2)]
-best_solutions_clusters_arcs = []
-for solution_clusters in best_solutions_clusters:
-    clusters_arcs = [list(permutations(cluster, 2))
-                     for cluster in solution_clusters]
-    best_solutions_clusters_arcs.append(clusters_arcs)
+# best_solutions_clusters = solutions[:]
+# best_solutions_clusters.reverse()
+# best_solutions_clusters = best_solutions_clusters[:int(k/2)]
+# best_solutions_clusters_arcs = []
+# for solution_clusters in best_solutions_clusters:
+#     clusters_arcs = [list(permutations(cluster, 2))
+#                      for cluster in solution_clusters]
+#     best_solutions_clusters_arcs.append(clusters_arcs)
 
 parameters_ants = {
     'alpha': ALPHA,
-    'ants_num': ceil(len(clients) / 2),
-    'arcs_clusters_importance': .5,  # t_delta[i][j] *= (1 + 0.5)
-    'arcs_clusters_lst': best_solutions_clusters_arcs,
+    # 'ants_num': ceil(len(clients) / 2),
+    'ants_num': len(clients),
+    # 'arcs_clusters_importance': .5,  # t_delta[i][j] *= (1 + 0.5)
+    # 'arcs_clusters_lst': best_solutions_clusters_arcs,
     'beta': BETA,
     'delta': DELTA,
-    'demands_array': demands_array,
+    'demands_array': lst_demands,
     'ipynb': True,
-    'k_optimal': k,
+    'k_optimal': k_optimal,
     'local_pheromone_update': True,
     'matrix_costs': matrix_distances,
     'matrix_heuristics': matrix_heuristics,
@@ -95,7 +99,7 @@ parameters_ants = {
     'percentage_of_similarity': SIMILARITY_PERCENTAGE_TO_DO_RESTART,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
-    # 'work_with_candidate_nodes': True,
+    'work_with_candidate_nodes': True,
 }
 
 bwacs = BWACS(**parameters_ants)

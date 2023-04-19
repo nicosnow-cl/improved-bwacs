@@ -3,7 +3,7 @@ import numpy as np
 import time
 
 from .acs import ACS
-from ..helpers import get_flattened_list, same_line_print
+from ..helpers import get_flattened_list, same_line_print, get_route_load
 
 
 class BWACS(ACS):
@@ -197,6 +197,8 @@ class BWACS(ACS):
         found by the algorithm at each iteration.
         """
 
+        self.print_intance_parameters()
+
         self.t_delta = self.get_initial_t_delta(self.matrix_costs)
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
         self.matrix_probabilities = self.get_probabilities_matrix()
@@ -218,7 +220,7 @@ class BWACS(ACS):
                 greedy_ant_best_solution = solution
 
         # Initial t_min and t_max and new t_delta
-        self.t_min, self.t_max = self.calculate_t_min_t_max(
+        self.t_min, self.t_max = self.calculate_t_min_t_max_mmas(
             greedy_ant_best_solution[1])
         self.t_delta = (self.t_min + self.t_max) / 2
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
@@ -323,7 +325,7 @@ class BWACS(ACS):
                                             iteration_worst_solution[2])
 
             # Update t_min and t_max and set bounds to pheromones matrix
-            self.t_min, self.t_max = self.calculate_t_min_t_max(
+            self.t_min, self.t_max = self.calculate_t_min_t_max_mmas(
                 global_best_solution[1])
 
             # Mutate pheromone matrix and check stagnation

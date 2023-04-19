@@ -1,8 +1,9 @@
+from math import exp, log
+from sklearn.preprocessing import MinMaxScaler
 from typing import Any, List, Tuple
 import numpy as np
 import random
 import time
-from sklearn.preprocessing import MinMaxScaler
 
 from ..helpers import same_line_print, get_flattened_list, get_inversed_matrix
 from ..models import ProblemModel
@@ -49,6 +50,18 @@ class ACS:
         self.__dict__.update(kwargs)
 
         self.evaporation_rate = (1 - self.p)
+
+    def print_intance_parameters(self):
+        print('\nPARAMETERS:')
+        print('\tk_optimal:', self.k_optimal)
+        print('\tants_num:', self.ants_num)
+        print('\tmax_iterations:', self.max_iterations)
+        print('\tmax_capacity:', self.max_capacity)
+        print('\ttare:', self.tare)
+        print('\talpha:', self.alpha)
+        print('\tbeta:', self.beta)
+        print('\tp:', self.p)
+        print('\tq0:', self.q0)
 
     def create_pheromones_matrix(self, t_delta: float = 0.001) -> np.ndarray:
         """
@@ -129,6 +142,22 @@ class ACS:
         t_max = 1 / (self.p * best_solution_quality)
         t_min = t_max * (1 - (0.05) ** (1 / n)) / \
             ((n / 2 - 1) * (0.05) ** (1 / n))
+
+        return t_min, t_max
+
+    def calculate_t_min_t_max_mmas(self, best_solution_quality: float):
+        n = len(self.nodes)
+        avg = n / 2
+        p_best = 0.05
+        p_best_n_root = exp(log(p_best) / n)
+
+        t_max = (1 / (1 - self.p)) * \
+            self.get_acs_fitness(best_solution_quality)
+
+        upper = t_max * (1 - p_best_n_root)
+        lower = (avg - 1) * p_best_n_root
+
+        t_min = upper / lower
 
         return t_min, t_max
 
@@ -281,7 +310,7 @@ class ACS:
                 greedy_ant_best_solution = solution
 
         # Initial t_min and t_max and new t_delta
-        self.t_min, self.t_max = self.calculate_t_min_t_max(
+        self.t_min, self.t_max = self.calculate_t_min_t_max_mmas(
             greedy_ant_best_solution[1])
         self.t_delta = (self.t_min + self.t_max) / 2
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
@@ -363,7 +392,7 @@ class ACS:
                                           global_best_solution[1])
 
             # Update t_min and t_max and set bounds to pheromones matrix
-            self.t_min, self.t_max = self.calculate_t_min_t_max(
+            self.t_min, self.t_max = self.calculate_t_min_t_max_mmas(
                 global_best_solution[1])
             self.set_bounds_to_pheromones_matrix()
 

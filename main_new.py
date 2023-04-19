@@ -297,7 +297,7 @@ INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
 # INSTANCE = 'instances/TSPLIB/Eil51/eil51.tsp'
 
 reader = ReaderCVRPLIB(INSTANCE)
-depot, clients, loc_x, loc_y, demands_array, total_demand, max_capacity, k, \
+depot, clients, loc_x, loc_y, lst_demands, total_demand, max_capacity, k, \
     tightness_ratio = reader.read()
 
 TARE_PERCENTAGE = 0.15
@@ -312,11 +312,11 @@ SIMILARITY_PERCENTAGE_TO_DO_RESTART = 50
 
 tare = max_capacity * TARE_PERCENTAGE
 nodes = [depot] + clients
-demands_array = np.array([demands_array[node] for node in demands_array])
+lst_demands = np.array([lst_demands[node] for node in lst_demands])
 coords_matrix = create_coords_matrix(nodes, loc_x, loc_y)
 matrix_costs = create_distances_matrix(nodes, coords_matrix)
 energies_matrix = create_energies_matrix(nodes, depot, tare, matrix_costs,
-                                         demands_array)
+                                         lst_demands)
 distances_mask = np.logical_and(
     matrix_costs != 0, np.isfinite(matrix_costs))
 normalized_distances_matrix = np.zeros_like(matrix_costs)
@@ -335,7 +335,7 @@ simple_probabilities_matrix = np.multiply(np.power(simple_pheromones_matrix,
                                           np.power(normalized_distances_matrix,
                                                    BETA))
 
-greedy_ant = FreeAnt(nodes, demands_array, simple_probabilities_matrix,
+greedy_ant = FreeAnt(nodes, lst_demands, simple_probabilities_matrix,
                      matrix_costs, max_capacity, tare, q0, VRPModel)
 
 ANT_COUNT = len(nodes)
@@ -362,9 +362,9 @@ t_min, t_max = calculate_t_values(
     BEST_GREEDY_FITNESS, ANT_COUNT, BASE_PHEROMONES_MATRIX,
     probabilities_matrix, P)
 
-ant = FreeAnt(nodes, demands_array, probabilities_matrix, matrix_costs,
+ant = FreeAnt(nodes, lst_demands, probabilities_matrix, matrix_costs,
               max_capacity, tare, q0, VRPModel)
-local_search = GeneralVNS(matrix_costs, demands_array,
+local_search = GeneralVNS(matrix_costs, lst_demands,
                           tare, max_capacity, k, MAX_ITERATIONS, VRPModel)
 
 last_iteration_when_do_restart = 0
