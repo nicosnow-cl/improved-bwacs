@@ -83,3 +83,22 @@ class ProblemModel(ABC):
         """
 
         raise NotImplementedError('fitness() need to be implemented')
+
+    @abstractmethod
+    def validate_instance(nodes, demands, max_capacity) -> dict:
+        """
+            Validates the given instance.
+
+            Parameters:
+                nodes (List[int]): A list of nodes.
+
+                demands (List[int]): A list of demands.
+
+                max_capacity (int): The maximum capacity of the vehicle.
+
+            Returns:
+
+                dict: A dictionary with the errors found in the instance.
+        """
+
+        raise NotImplementedError('validate_instance() need to be implemented')

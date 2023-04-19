@@ -199,9 +199,15 @@ class BWACS(ACS):
 
         self.print_intance_parameters()
 
+        errors = self.model_problem.validate_instance(
+            self.nodes, self.demands_array, self.max_capacity)
+        if errors:
+            raise Exception(errors)
+
         self.t_delta = self.get_initial_t_delta(self.matrix_costs)
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
-        self.matrix_probabilities = self.get_probabilities_matrix()
+        self.matrix_probabilities = self.get_probabilities_matrix(
+            self.matrix_pheromones)
 
         # Greedy ants to find the best initial solution
         greedy_ant = self.model_ant(self.nodes,
@@ -224,12 +230,13 @@ class BWACS(ACS):
             greedy_ant_best_solution[1])
         self.t_delta = (self.t_min + self.t_max) / 2
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
-        self.matrix_probabilities = self.get_probabilities_matrix()
+        self.matrix_probabilities = self.get_probabilities_matrix(
+            self.matrix_pheromones)
 
         # Create ants
         ant = self.model_ant(self.nodes,
                              self.demands_array,
-                             self.matrix_probabilities,
+                             self.matrix_probabilities.copy(),
                              self.matrix_costs,
                              self.max_capacity,
                              self.tare,
@@ -258,6 +265,21 @@ class BWACS(ACS):
         for i in range(self.max_iterations):
             iterations_solutions = []
 
+            if np.isnan(self.matrix_probabilities).any():
+                print(
+                    self.matrix_probabilities[
+                        self.matrix_probabilities == np.nan])
+                print(
+                    len(self.matrix_probabilities[
+                        self.matrix_probabilities == np.nan]))
+                raise Exception('Probabilities matrix is NaN!')
+
+            print('Init it')
+            print('min: {:.30f}'.format(
+                self.matrix_probabilities[self.matrix_probabilities != 0].min()))
+            print('max: {:.30f}'.format(self.matrix_probabilities.max()))
+            print('\n')
+
             # Generate solutions for each ant
             for _ in range(self.ants_num):
                 solution = ant.generate_solution(candidate_starting_nodes)
@@ -274,8 +296,16 @@ class BWACS(ACS):
                     self.set_bounds_to_pheromones_matrix()
 
                     # Update probabilities matrix
-                    self.matrix_probabilities = self.get_probabilities_matrix()
-                    ant.set_probabilities_matrix(self.matrix_probabilities)
+                    self.matrix_probabilities = self.get_probabilities_matrix(
+                        self.matrix_pheromones)
+                    ant.set_probabilities_matrix(
+                        self.matrix_probabilities.copy())
+
+                    print(f'\tAnt {_}')
+                    print('\tmin: {:.30f}'.format(
+                        self.matrix_probabilities[self.matrix_probabilities != 0].min()))
+                    print('\tmax: {:.30f}'.format(
+                        self.matrix_probabilities.max()))
 
             # Sort solutions by fitness and filter by k_optimal
             iterations_solutions_sorted = sorted(iterations_solutions,
@@ -337,14 +367,15 @@ class BWACS(ACS):
                     self.t_delta)
                 restart_iteration = i
 
-            if restart_iteration > 0:
-                self.mutate_pheromones_matrix(global_best_solution[2],
-                                              i, restart_iteration)
+            # if restart_iteration > 0:
+            #     self.mutate_pheromones_matrix(global_best_solution[2],
+            #                                   i, restart_iteration)
 
             self.set_bounds_to_pheromones_matrix()
 
-            self.matrix_probabilities = self.get_probabilities_matrix()
-            ant.set_probabilities_matrix(self.matrix_probabilities)
+            self.matrix_probabilities = self.get_probabilities_matrix(
+                self.matrix_pheromones)
+            ant.set_probabilities_matrix(self.matrix_probabilities.copy())
 
             # Append iteration best solution to list of best solutions
             best_solutions.append(iteration_best_solution)

@@ -15,7 +15,7 @@ Q_0 = 0.8
 TARE_PERCENTAGE = 0.15
 
 reader = ReaderCVRPLIB(INSTANCE)
-depot, clients, loc_x, loc_y, demands_array, total_demand, max_capacity, k, \
+depot, clients, loc_x, loc_y, lst_demands, total_demand, max_capacity, k, \
     tightness_ratio = reader.read()
 
 nodes = [depot] + clients
@@ -28,7 +28,7 @@ parameters = {
     'alpha': ALPHA,
     'ants_num': len(clients),
     'beta': BETA,
-    'demands_array': np.array([demands_array[node] for node in demands_array]),
+    'demands_array': np.array([lst_demands[node] for node in lst_demands]),
     'k_optimal': k,
     'matrix_costs': matrix_costs,
     'matrix_heuristics': matrix_costs,

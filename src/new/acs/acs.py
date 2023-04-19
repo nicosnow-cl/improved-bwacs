@@ -237,7 +237,7 @@ class ACS:
         with np.errstate(divide='ignore'):  # ignore division by zero warnings
             return np.divide(1, matrix, out=np.zeros_like(matrix), where=mask)
 
-    def get_probabilities_matrix(self) -> np.ndarray:
+    def get_probabilities_matrix(self, pheromones_matrix: np.ndarray) -> np.ndarray:
         """
         Get the updated matrix of probabilities of choosing an arc.
 
@@ -258,7 +258,7 @@ class ACS:
         # scaler = MinMaxScaler(feature_range=(min_not_zero_value, max_value))
         # norm_matrix_pheromones = scaler.fit_transform(self.matrix_pheromones)
 
-        return np.multiply(np.power(self.matrix_pheromones, self.alpha),
+        return np.multiply(np.power(pheromones_matrix, self.alpha),
                            #    np.power(self.matrix_heuristics, self.beta))
                            self.matrix_heuristics)
 

@@ -9,14 +9,14 @@ from ..models.vehicle_model import VehicleModel
 class FreeAnt:
     def __init__(self,
                  nodes,
-                 demands_array,
+                 lst_demands,
                  matrix_probabilities,
                  matrix_costs,
                  max_capacity,
                  tare,
                  q0,
                  problem_model):
-        self.demands_array = demands_array
+        self.lst_demands = lst_demands
         self.matrix_probabilities = matrix_probabilities
         self.matrix_costs = matrix_costs
         self.max_capacity = max_capacity
@@ -53,14 +53,22 @@ class FreeAnt:
         if q >= self.q0:
             return valid_nodes[probabilities_of_nodes.argmax()]
         else:
-            cum_weights = probabilities_of_nodes.cumsum()
-            cum_weights /= cum_weights[-1]
+            try:
+                cum_weights = probabilities_of_nodes.cumsum()
+                cum_weights /= cum_weights[-1]
 
-            return valid_nodes[np.searchsorted(cum_weights, np.random.rand())]
+                return valid_nodes[np.searchsorted(cum_weights,
+                                                   np.random.rand())]
+
+            # probabilities_of_nodes /= probabilities_of_nodes.sum()
+            # return np.random.choice(valid_nodes,
+            #                         p=probabilities_of_nodes)
+            except ValueError:
+                print(probabilities_of_nodes)
 
     def get_valid_nodes(self, unvisited_nodes, vehicle: VehicleModel):
         return [node for node in unvisited_nodes
-                if vehicle['load'] + self.demands_array[node]
+                if vehicle['load'] + self.lst_demands[node]
                 <= vehicle['max_capacity']]
 
     def get_valid_nodes_sorted_by_distance(self,
@@ -86,7 +94,7 @@ class FreeAnt:
 
             route_cost += self.problem_model.get_cost_between_two_nodes(
                 r, s, self.matrix_costs)
-            vehicle['load'] += self.demands_array[s]
+            vehicle['load'] += self.lst_demands[s]
 
             valid_nodes.remove(s)
 
@@ -95,10 +103,15 @@ class FreeAnt:
 
         while valid_nodes:
             s = self.choose_next_node(r, valid_nodes)
+            if s is None:
+                print(r)
+                print(self.matrix_probabilities[r][valid_nodes])
+                print(valid_nodes)
 
             route_cost += self.problem_model.get_cost_between_two_nodes(
                 r, s, self.matrix_costs)
-            vehicle['load'] += self.demands_array[s]
+
+            vehicle['load'] += self.lst_demands[s]
 
             valid_nodes.remove(s)
             valid_nodes = self.get_valid_nodes(valid_nodes, vehicle)

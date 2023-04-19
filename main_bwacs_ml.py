@@ -14,7 +14,7 @@ from src.readers import ReaderCVRPLIB
 from src.new.heuristics import HeuristicModel
 
 
-ALPHA = 1
+ALPHA = 1.5
 BETA = 3.5  # 2, 3.5
 GAMMA = 2  # 1, 2
 DELTA = 2
@@ -23,7 +23,7 @@ MAX_ITERATIONS = 300
 P = 0.2
 P_M = 0.2
 Q_0 = 0.8
-SIMILARITY_PERCENTAGE_TO_DO_RESTART = 60  # 45, 50, 55, 60, 62
+SIMILARITY_PERCENTAGE_TO_DO_RESTART = 65  # 45, 50, 55, 60, 62
 TARE_PERCENTAGE = 0.15
 
 
@@ -76,8 +76,8 @@ matrix_heuristics = heuristics.get_heuristic_matrix(['distance'])
 
 parameters_ants = {
     'alpha': ALPHA,
-    # 'ants_num': ceil(len(clients) / 2),
-    'ants_num': len(clients),
+    'ants_num': ceil(len(clients) / 2),
+    # 'ants_num': len(clients),
     # 'arcs_clusters_importance': .5,  # t_delta[i][j] *= (1 + 0.5)
     # 'arcs_clusters_lst': best_solutions_clusters_arcs,
     'beta': BETA,
@@ -91,7 +91,7 @@ parameters_ants = {
     'max_capacity': max_capacity,
     'max_iterations': MAX_ITERATIONS,
     'model_ant': FreeAnt,
-    'model_ls_it': GeneralVNS,
+    # 'model_ls_it': GeneralVNS,
     'model_problem': VRPModel,
     'nodes': nodes,
     'p_m': P_M,
@@ -99,7 +99,7 @@ parameters_ants = {
     'percentage_of_similarity': SIMILARITY_PERCENTAGE_TO_DO_RESTART,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
-    'work_with_candidate_nodes': True,
+    # 'work_with_candidate_nodes': True,
 }
 
 bwacs = BWACS(**parameters_ants)

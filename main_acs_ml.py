@@ -18,7 +18,7 @@ Q_0 = 0.8
 TARE_PERCENTAGE = 0.15
 
 reader = ReaderCVRPLIB(INSTANCE)
-depot, clients, loc_x, loc_y, demands_array, total_demand, max_capacity, k, \
+depot, clients, loc_x, loc_y, lst_demands, total_demand, max_capacity, k, \
     tightness_ratio = reader.read()
 
 nodes = [depot] + clients
@@ -28,7 +28,7 @@ matrix_coords = get_coords_matrix(nodes, loc_x_lst, loc_y_lst)
 matrix_costs = get_distances_matrix(nodes, matrix_coords)
 
 parameters_kmeans = {
-    'demands': np.array([demands_array[node] for node in demands_array]),
+    'demands': np.array([lst_demands[node] for node in lst_demands]),
     'k_optimal': k,
     'matrix_coords': matrix_coords[:],
     'matrix_distances': matrix_costs[:],
@@ -54,7 +54,7 @@ parameters_acs = {
     'arcs_clusters_importance': .5,  # t_deta[i][j] *= (1 + 0.5)
     'arcs_clusters_lst': best_solutions_clusters_arcs,
     'beta': BETA,
-    'demands_array': [demands_array[node] for node in demands_array],
+    'demands_array': [lst_demands[node] for node in lst_demands],
     'ipynb': True,
     'k_optimal': k,
     'local_pheromone_update': True,
