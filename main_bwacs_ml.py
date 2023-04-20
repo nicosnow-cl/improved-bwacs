@@ -1,12 +1,11 @@
 from itertools import permutations
 from threading import Thread
 from math import ceil
-import numpy as np
 
 
 from src.new.aco import FreeAnt
 from src.new.acs import BWACS
-from src.new.helpers import get_coords_matrix, get_distances_matrix
+from src.new.helpers import get_distances_matrix
 from src.new.machine_learning import KMeans
 from src.new.metaheuristics import GeneralVNS
 from src.new.models import VRPModel
@@ -14,16 +13,16 @@ from src.readers import ReaderCVRPLIB
 from src.new.heuristics import HeuristicModel
 
 
-ALPHA = 1.5
+ALPHA = 0.75  # 0.75, 1, 1.25, 1.5, 1.75, 2
 BETA = 3.5  # 2, 3.5
 GAMMA = 2  # 1, 2
-DELTA = 2
+DELTA = 2  # 1, 2, 3, 4
 INSTANCE = 'instances/CVRPLIB/Golden/Golden_20'
 MAX_ITERATIONS = 300
-P = 0.2
+P = 0.05  # 0.05, 0.1, 0.15, 0.2, 0.25, 0.3
 P_M = 0.2
 Q_0 = 0.8
-SIMILARITY_PERCENTAGE_TO_DO_RESTART = 65  # 45, 50, 55, 60, 62
+SIMILARITY_PERCENTAGE_TO_DO_RESTART = 75  # 45, 50, 55, 60, 62, 65, 70, 75
 TARE_PERCENTAGE = 0.15
 
 
@@ -31,26 +30,33 @@ reader = ReaderCVRPLIB(INSTANCE)
 depot, clients, loc_x, loc_y, demands, total_demand, max_capacity, k, \
     tightness_ratio = reader.read()
 
-nodes = [depot] + clients
-loc_x_lst = [loc_x[node] for node in nodes]
-loc_y_lst = [loc_y[node] for node in nodes]
-lst_demands = [demands[node] for node in demands]
-matrix_coords = get_coords_matrix(nodes, loc_x_lst, loc_y_lst)
+nodes, demands, matrix_coords = VRPModel.get_normalize_instance_parameters(
+    depot,
+    clients,
+    demands,
+    loc_x,
+    loc_y)
+
+errors = VRPModel.validate_instance(nodes, demands, max_capacity)
+if errors:
+    raise Exception(errors)
+
+
 matrix_distances = get_distances_matrix(nodes, matrix_coords)
-k_optimal = ceil(sum(lst_demands) / max_capacity)
+k_optimal = ceil(sum(demands) / max_capacity)
 # print(matrix_distances.min(), matrix_distances.max())
 # raise Exception
 parameters_heuristics = {
-    'coords_x': loc_x_lst,
-    'coords_y': loc_y_lst,
-    'demands': lst_demands,
+    'demands': demands,
     'importance_distances': BETA,
     'importance_savings': GAMMA,
+    'matrix_coords': matrix_coords,
     'nodes': nodes,
 }
 
 heuristics = HeuristicModel(**parameters_heuristics)
-matrix_heuristics = heuristics.get_heuristic_matrix(['distance'])
+matrix_heuristics = heuristics.get_heuristic_matrix(['distance', 'saving'])
+
 # print(matrix_heuristics.min(), matrix_heuristics.max())
 # raise Exception
 # parameters_kmeans = {
@@ -82,10 +88,10 @@ parameters_ants = {
     # 'arcs_clusters_lst': best_solutions_clusters_arcs,
     'beta': BETA,
     'delta': DELTA,
-    'demands_array': lst_demands,
+    'demands_array': demands,
     'ipynb': True,
     'k_optimal': k_optimal,
-    'local_pheromone_update': True,
+    # 'local_pheromone_update': True,
     'matrix_costs': matrix_distances,
     'matrix_heuristics': matrix_heuristics,
     'max_capacity': max_capacity,

@@ -2,6 +2,7 @@ from typing import List, Tuple
 import numpy as np
 
 from .problem_model import ProblemModel
+from ..helpers import get_coords_matrix
 
 
 class VRPModel(ProblemModel):
@@ -71,3 +72,30 @@ class VRPModel(ProblemModel):
                 'Max capacity must be greater than 0.'
 
         return errors
+
+    @staticmethod
+    def get_normalize_instance_parameters(int_depot,
+                                          lst_clients,
+                                          dict_demands,
+                                          dict_loc_x,
+                                          dict_loc_y) \
+            -> Tuple[List[int], List[int], np.ndarray]:
+        nodes = [int_depot]
+        nodes.extend([idx + 1 for idx in range(len(lst_clients))])
+
+        lst_demands_sorted = sorted(dict_demands.items(), key=lambda x: x[0])
+        dict_demands_sorted = {}
+
+        if lst_demands_sorted[0][0] != 0:
+            lst_demands_sorted = [(node_demand[0] - 1, node_demand[1])
+                                  for node_demand in lst_demands_sorted]
+        dict_demands_sorted = dict(lst_demands_sorted)
+
+        demands = [dict_demands_sorted[node] for node in nodes]
+
+        lst_loc_x = [dict_loc_x[node] for node in nodes]
+        lst_loc_y = [dict_loc_y[node] for node in nodes]
+
+        matrix_coords = get_coords_matrix(nodes, lst_loc_x, lst_loc_y)
+
+        return nodes, demands, matrix_coords

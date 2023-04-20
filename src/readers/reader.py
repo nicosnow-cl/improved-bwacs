@@ -45,7 +45,7 @@ class ReaderCVRPLIB:
                         else:
                             temp_line = line.split()
                             data['NODE_COORD_SECTION'][idx] = [
-                                int(float(temp_line[1])), int(float(temp_line[2]))]
+                                float(temp_line[1]), float(temp_line[2])]
                             del_index.append(line)
                             idx += 1
 

@@ -28,6 +28,10 @@ def get_saving_matrix(depot, nodes, matrix_distances):
     scaler = MinMaxScaler(feature_range=(min_not_zero_value, max_value))
     saving_matrix = scaler.fit_transform(saving_matrix)
 
+    saving_matrix[0, :] = 1
+    saving_matrix[:, [0]] = 1
+    np.fill_diagonal(saving_matrix, 1)
+
     return saving_matrix
 
 # (Benito Quintanilla, 2015)
@@ -65,5 +69,9 @@ def get_saving_matrix_2015(depot,
     # Here we normalice the values between min distance and max distance.
     scaler = MinMaxScaler(feature_range=(min_not_zero_value, max_value))
     saving_matrix = scaler.fit_transform(saving_matrix)
+
+    saving_matrix[0, :] = 1
+    saving_matrix[:, [0]] = 1
+    np.fill_diagonal(saving_matrix, 1)
 
     return saving_matrix

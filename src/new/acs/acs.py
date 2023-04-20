@@ -79,7 +79,7 @@ class ACS:
         """
 
         shape = len(self.nodes)
-        matrix_pheromones = np.full((shape, shape), self.t_delta)
+        matrix_pheromones = np.full((shape, shape), self.t_max)
 
         if self.arcs_clusters_lst:
             num_clusters = len(self.arcs_clusters_lst)
@@ -257,6 +257,9 @@ class ACS:
         # # Here we normalice the values between min distance and max distance.
         # scaler = MinMaxScaler(feature_range=(min_not_zero_value, max_value))
         # norm_matrix_pheromones = scaler.fit_transform(self.matrix_pheromones)
+
+        # return np.multiply(np.power(norm_matrix_pheromones, self.alpha),
+        #                    self.matrix_heuristics)
 
         return np.multiply(np.power(pheromones_matrix, self.alpha),
                            #    np.power(self.matrix_heuristics, self.beta))

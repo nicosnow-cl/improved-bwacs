@@ -1,13 +1,11 @@
 from typing import List
 import numpy as np
 
-from ..helpers import get_coords_matrix, get_distances_matrix, \
-    get_saving_matrix, get_saving_matrix_2015, get_inversed_matrix
+from ..helpers import get_distances_matrix, get_saving_matrix, \
+    get_saving_matrix_2015, get_inversed_matrix
 
 
 class HeuristicModel:
-    coords_x: List[float] = None
-    coords_y: List[float] = None
     demands: List[int] = None
     importance_distances: float = 2.0
     importance_savings: float = 1.0
@@ -20,9 +18,6 @@ class HeuristicModel:
         self.__dict__.update(kwargs)
 
     def get_heuristic_matrix(self, heuristics=['distance']) -> np.ndarray:
-        self.matrix_coords = get_coords_matrix(
-            self.nodes, self.coords_x, self.coords_y)
-
         for heuristic in set(heuristics):
             if heuristic == 'distance':
                 matrix_distances = get_distances_matrix(

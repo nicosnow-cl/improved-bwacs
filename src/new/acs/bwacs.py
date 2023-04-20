@@ -274,11 +274,11 @@ class BWACS(ACS):
                         self.matrix_probabilities == np.nan]))
                 raise Exception('Probabilities matrix is NaN!')
 
-            print('Init it')
-            print('min: {:.30f}'.format(
-                self.matrix_probabilities[self.matrix_probabilities != 0].min()))
-            print('max: {:.30f}'.format(self.matrix_probabilities.max()))
-            print('\n')
+            # print('Init it')
+            # print('min: {:.30f}'.format(
+            #     self.matrix_probabilities[self.matrix_probabilities != 0].min()))
+            # print('max: {:.30f}'.format(self.matrix_probabilities.max()))
+            # print('\n')
 
             # Generate solutions for each ant
             for _ in range(self.ants_num):
@@ -301,11 +301,11 @@ class BWACS(ACS):
                     ant.set_probabilities_matrix(
                         self.matrix_probabilities.copy())
 
-                    print(f'\tAnt {_}')
-                    print('\tmin: {:.30f}'.format(
-                        self.matrix_probabilities[self.matrix_probabilities != 0].min()))
-                    print('\tmax: {:.30f}'.format(
-                        self.matrix_probabilities.max()))
+                    # print(f'\tAnt {_}')
+                    # print('\tmin: {:.30f}'.format(
+                    #     self.matrix_probabilities[self.matrix_probabilities != 0].min()))
+                    # print('\tmax: {:.30f}'.format(
+                    #     self.matrix_probabilities.max()))
 
             # Sort solutions by fitness and filter by k_optimal
             iterations_solutions_sorted = sorted(iterations_solutions,
@@ -359,13 +359,13 @@ class BWACS(ACS):
                 global_best_solution[1])
 
             # Mutate pheromone matrix and check stagnation
-            if self.reach_stagnation(iteration_best_solution[2],
-                                     iteration_worst_solution[2]):
-                iteration_output.append('    > Stagnation detected!')
-                self.t_delta = (self.t_min + self.t_max) / 2
-                self.matrix_pheromones = self.create_pheromones_matrix(
-                    self.t_delta)
-                restart_iteration = i
+            # if self.reach_stagnation(iteration_best_solution[2],
+            #                          iteration_worst_solution[2]):
+            #     iteration_output.append('    > Stagnation detected!')
+            #     self.t_delta = (self.t_min + self.t_max) / 2
+            #     self.matrix_pheromones = self.create_pheromones_matrix(
+            #         self.t_delta)
+            #     restart_iteration = i
 
             # if restart_iteration > 0:
             #     self.mutate_pheromones_matrix(global_best_solution[2],
