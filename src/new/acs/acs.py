@@ -63,7 +63,10 @@ class ACS:
         print('\tp:', self.p)
         print('\tq0:', self.q0)
 
-    def create_pheromones_matrix(self, t_delta: float = 0.001) -> np.ndarray:
+    def create_pheromones_matrix(self,
+                                 t_delta: float = 0.5,
+                                 t_min: float = 0.1,
+                                 t_max: float = 1.0) -> np.ndarray:
         """
         Creates the initial matrix of pheromone trail levels.
 
@@ -79,31 +82,30 @@ class ACS:
         """
 
         shape = len(self.nodes)
-        matrix_pheromones = np.full((shape, shape), self.t_max)
-
-        if self.arcs_clusters_lst:
-            num_clusters = len(self.arcs_clusters_lst)
-            clusters_factor = 1 + \
-                (self.arcs_clusters_importance / num_clusters)
-
-            clusters_arcs_flattened = []
-            for clusters_arcs in self.arcs_clusters_lst:
-                clusters_arcs_flattened += get_flattened_list(clusters_arcs)
-
-            for i, j in clusters_arcs_flattened:
-                matrix_pheromones[i][j] *= clusters_factor
+        matrix_pheromones = np.full((shape, shape), t_max)
 
         # if self.arcs_clusters_lst:
-        #     matrix_pheromones = np.full((shape, shape), self.t_max)
-        #     clusters_arcs_flattened = []
+        #     num_clusters = len(self.arcs_clusters_lst)
+        #     clusters_factor = 1 + \
+        #         (self.arcs_clusters_importance / num_clusters)
 
+        #     clusters_arcs_flattened = []
         #     for clusters_arcs in self.arcs_clusters_lst:
         #         clusters_arcs_flattened += get_flattened_list(clusters_arcs)
 
-        #     for i in range(shape):
-        #         for j in range(shape):
-        #             if (i, j) not in clusters_arcs_flattened:
-        #                 matrix_pheromones[i][j] *= self.evaporation_rate
+        #     for i, j in clusters_arcs_flattened:
+        #         matrix_pheromones[i][j] *= clusters_factor
+
+        if self.arcs_clusters_lst:
+            clusters_arcs_flattened = []
+
+            for clusters_arcs in self.arcs_clusters_lst:
+                clusters_arcs_flattened += get_flattened_list(clusters_arcs)
+
+            for i in range(shape):
+                for j in range(shape):
+                    if (i, j) not in clusters_arcs_flattened:
+                        matrix_pheromones[i][j] = t_delta
 
         return matrix_pheromones
 
@@ -212,9 +214,13 @@ class ACS:
 
         pheromones_amount = factor * self.get_acs_fitness(solution_quality)
 
-        for arcs_idxs in solution_arcs:
-            self.matrix_pheromones[arcs_idxs[:, 0],
-                                   arcs_idxs[:, 1]] += pheromones_amount
+        # for arcs_idxs in solution_arcs:
+        #     self.matrix_pheromones[arcs_idxs[:, 0],
+        #                            arcs_idxs[:, 1]] += pheromones_amount
+
+        for arcs_lst in solution_arcs:
+            for i, j in arcs_lst:
+                self.matrix_pheromones[i][j] += pheromones_amount
 
     def set_bounds_to_pheromones_matrix(self) -> None:
         """
@@ -227,9 +233,10 @@ class ACS:
         Returns:
             None.
         """
+        MAX = 1
 
-        np.clip(self.matrix_pheromones, self.t_min,
-                self.t_max, out=self.matrix_pheromones)
+        np.clip(self.matrix_pheromones, self.t_min, MAX,
+                out=self.matrix_pheromones)
 
     def get_normalized_matrix(self, matrix: np.ndarray) -> np.ndarray:
         mask = (matrix != 0) & np.isfinite(matrix)
@@ -237,7 +244,8 @@ class ACS:
         with np.errstate(divide='ignore'):  # ignore division by zero warnings
             return np.divide(1, matrix, out=np.zeros_like(matrix), where=mask)
 
-    def get_probabilities_matrix(self, pheromones_matrix: np.ndarray) -> np.ndarray:
+    def get_probabilities_matrix(self, pheromones_matrix: np.ndarray) \
+            -> np.ndarray:
         """
         Get the updated matrix of probabilities of choosing an arc.
 
@@ -256,7 +264,7 @@ class ACS:
 
         # # Here we normalice the values between min distance and max distance.
         # scaler = MinMaxScaler(feature_range=(min_not_zero_value, max_value))
-        # norm_matrix_pheromones = scaler.fit_transform(self.matrix_pheromones)
+        # norm_matrix_pheromones = scaler.fit_transform(pheromones_matrix)
 
         # return np.multiply(np.power(norm_matrix_pheromones, self.alpha),
         #                    self.matrix_heuristics)
