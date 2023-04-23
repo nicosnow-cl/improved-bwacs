@@ -91,7 +91,7 @@ class BWACS(ACS):
             for j in range(i + 1, self.matrix_pheromones.shape[0]):
                 if np.random.rand() < self.p_m:
                     mutation_value = (
-                        self.p * mutation_intensity * t_threshold) * 0.00025
+                        self.p * mutation_intensity * t_threshold) * 0.00005
                     mutation_value *= np.random.choice([-1, 1])
 
                     self.matrix_pheromones[i][j] += mutation_value
@@ -142,9 +142,9 @@ class BWACS(ACS):
 
         return np.mean(pheromones)
 
-    def reach_stagnation(self,
-                         it_best_solution_arcs,
-                         it_worst_solution_arcs):
+    def is_stagnation_reached_by_arcs(self,
+                                      it_best_solution_arcs,
+                                      it_worst_solution_arcs):
         """
         Determine if the algorithm has reached stagnation based on the current
         and previous best and worst solutions.
@@ -175,6 +175,43 @@ class BWACS(ACS):
         actual_percentage = (a / b) * 100
 
         return actual_percentage >= self.percentage_of_similarity
+
+    def is_stagnation_reached_by_solutions(self,
+                                           best_actual_quality: float,
+                                           best_prev_quality: float,
+                                           worst_actual_quality: float,
+                                           actual_median: float,
+                                           prev_median: float,
+                                           similarity_percentage: float):
+        no_improvements = best_actual_quality >= best_prev_quality
+
+        quality_similarity = (best_actual_quality / worst_actual_quality)
+        quality_similarity_reached = quality_similarity > similarity_percentage
+
+        median_similarity = actual_median / prev_median
+        median_similarity_reached = median_similarity > similarity_percentage
+
+        return no_improvements and quality_similarity_reached \
+            and median_similarity_reached
+
+    def get_avg_steps_between_restarts(self, restarts):
+        """
+        Calculates the average number of iterations between restarts.
+
+        Args:
+            restarts (list): A list of integers representing the iteration
+            number at which a restart was performed.
+
+        Returns:
+            float: The average number of iterations between restarts.
+        """
+
+        if len(restarts) > 1:
+            steps = [restarts[i + 1] - restarts[i]
+                     for i in range(len(restarts) - 1)]
+            return np.mean(steps)
+        else:
+            return 0
 
     def run(self):
         """
@@ -259,9 +296,11 @@ class BWACS(ACS):
         global_best_solution = (None, np.inf, None, None, None)
         max_outputs_to_print = 10
         outputs_to_print = []
-        restart_iteration = 0
+        restarts = []
         start_time = time.time()
 
+        best_prev_quality = np.inf
+        prev_median = np.inf
         # Loop over max_iterations
         for i in range(self.max_iterations):
             iterations_solutions = []
@@ -274,7 +313,7 @@ class BWACS(ACS):
                 # Local pheromone update
                 if self.local_pheromone_update and \
                         len(solution[0]) == self.k_optimal:
-                    local_factor = self.p / self.ants_num
+                    local_factor = self.p / len(self.nodes)
 
                     # Update pheromones matrix with local update
                     self.update_pheromones_matrix(
@@ -282,10 +321,8 @@ class BWACS(ACS):
                     self.set_bounds_to_pheromones_matrix()
 
                     # Update probabilities matrix
-                    self.matrix_probabilities = self.get_probabilities_matrix(
-                        self.matrix_pheromones)
                     ant.set_probabilities_matrix(
-                        self.matrix_probabilities.copy())
+                        self.get_probabilities_matrix(self.matrix_pheromones).copy())
 
             # Sort solutions by fitness and filter by k_optimal
             iterations_solutions_sorted = sorted(iterations_solutions,
@@ -300,42 +337,54 @@ class BWACS(ACS):
                     iterations_solutions_sorted_and_restricted[0]
             else:
                 iteration_best_solution = iterations_solutions_sorted[0]
+
             iteration_worst_solution = iterations_solutions_sorted[-1]
             median_iteration_costs = np.median(
                 [solution[1] for solution in iterations_solutions_sorted])
-            average_iteration_costs = np.mean(
+            avg_iteration_costs = np.mean(
                 [solution[1] for solution in iterations_solutions_sorted])
+            std_iteration_costs = np.std(
+                [solution[1] for solution in iterations_solutions_sorted])
+
+            # Update iteration output
+            iteration_output = [
+                f'Iteration {i + 1}',
+                '\t> Iteration results: BEST({}), WORST({})'
+                .format(iteration_best_solution[1],
+                        iteration_worst_solution[1]),
+                '\t                     MED({}), AVG({}), STD({})'
+                .format(median_iteration_costs,
+                        avg_iteration_costs,
+                        std_iteration_costs)
+            ]
 
             # LS by VNS on best iteration solution
             ls_it_solution = (None, np.inf, None, None, None)
             if ls_it:
                 ls_it_solution = ls_it.improve(iteration_best_solution[0], i)
 
-                if ls_it_solution[1] < iteration_best_solution[1]:
-                    iteration_best_solution = ls_it_solution
+                # if ls_it_solution[1] < iteration_best_solution[1]:
+                #     iteration_best_solution = ls_it_solution
 
-            # Update iteration output
-            iteration_output = [
-                f'Iteration {i + 1}',
-                '\t> Iteration results: BEST({}), WORST({}), LS({})'
-                .format(iteration_best_solution[1],
-                        iteration_worst_solution[1],
-                        ls_it_solution[1]),
-                '\t  MED({}), AVG({})'
-                .format(median_iteration_costs,
-                        average_iteration_costs)
-            ]
+                iteration_output[1] += ', LS({})'.format(ls_it_solution[1])
 
             # Update global best solution if iteration best solution is better
-            if iteration_best_solution[1] < global_best_solution[1]:
+            # if iteration_best_solution[1] < global_best_solution[1]:
+            #     global_best_solution = iteration_best_solution
+
+            # Update global best solution if LS best solution is better
+            # or iteration best solution is better
+            if ls_it_solution[1] < global_best_solution[1]:
+                global_best_solution = ls_it_solution
+            elif iteration_best_solution[1] < global_best_solution[1]:
                 global_best_solution = iteration_best_solution
 
             # Evaporate pheromones and update pheromone matrix by BWACS
-            global_factor = (self.ants_num * self.p) if \
-                self.local_pheromone_update else 1
+            # global_factor = (self.ants_num * self.p)
             self.evaporate_pheromones_matrix()
             self.update_pheromones_matrix(global_best_solution[2],
                                           global_best_solution[1])
+            #   global_best_solution[1],
             #   global_factor)
             self.penalize_pheromones_matrix(global_best_solution[2],
                                             iteration_worst_solution[2])
@@ -345,17 +394,27 @@ class BWACS(ACS):
                 global_best_solution[1])
 
             # Mutate pheromone matrix and check stagnation
-            if self.reach_stagnation(iteration_best_solution[2],
-                                     iteration_worst_solution[2]):
-                iteration_output.append('\t> Stagnation detected!')
+            # if self.reach_stagnation(iteration_best_solution[2],
+            #                          iteration_worst_solution[2]):
+            restarts_avg_steps = self.get_avg_steps_between_restarts(restarts)
+            remaining_iterations = self.max_iterations - i
+            if remaining_iterations >= restarts_avg_steps and \
+                self.is_stagnation_reached_by_solutions(
+                    iteration_best_solution[1],
+                    best_prev_quality,
+                    iterations_solutions_sorted[-1][1],
+                    median_iteration_costs,
+                    prev_median,
+                    self.percentage_of_similarity):
+                iteration_output.append('\t* Stagnation detected!')
                 self.t_delta = (self.t_min + self.t_max) / 2
                 self.matrix_pheromones = self.create_pheromones_matrix(
                     self.t_delta, self.t_min, self.t_max)
-                restart_iteration = i
+                restarts.append(i)
 
-            if restart_iteration > 0:
+            if len(restarts):
                 self.mutate_pheromones_matrix(global_best_solution[2],
-                                              i, restart_iteration)
+                                              i, restarts[-1])
 
             self.set_bounds_to_pheromones_matrix()
 
@@ -365,7 +424,14 @@ class BWACS(ACS):
 
             # Append iteration best solution to list of best solutions
             best_solutions.append(iteration_best_solution)
+            iteration_output.append('\t> Global best solution: {}'
+                                    .format(global_best_solution[1]))
 
+            # Update best_prev_quality, best_median
+            best_prev_quality = iteration_best_solution[1]
+            prev_median = median_iteration_costs
+
+            # Update candidate starting nodes
             if self.work_with_candidate_nodes:
                 candidate_starting_nodes = self.get_candidate_starting_nodes(
                     best_solutions)
@@ -401,8 +467,9 @@ class BWACS(ACS):
               .format([(ant_solution[1], len(ant_solution[0]), ant_solution[4])
                        for ant_solution in best_solutions_set][:5]))
 
-        if restart_iteration:
-            print(f'Last iteration when do restart: {restart_iteration}')
+        if len(restarts):
+            print('Iterations when do restart: {}'.format(
+                [restart_iteration + 1 for restart_iteration in restarts]))
 
         # print(f't_min: {self.t_min} | t_max: {self.t_max}')
         # print(f'Pheromones min: {self.matrix_pheromones.min()}')

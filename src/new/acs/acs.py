@@ -212,7 +212,7 @@ class ACS:
             None.
         """
 
-        pheromones_amount = factor * self.get_acs_fitness(solution_quality)
+        pheromones_amount = self.get_acs_fitness(solution_quality) * factor
 
         # for arcs_idxs in solution_arcs:
         #     self.matrix_pheromones[arcs_idxs[:, 0],
@@ -287,16 +287,46 @@ class ACS:
             list: A list of candidate starting nodes for the ants.
         """
 
-        solutions_sorted = sorted(
-            filter(lambda sol: sol[1], solutions), key=lambda x: x[1])
-        best_starting_nodes = {route[1]
-                               for solution in solutions_sorted[:10]
-                               for route in solution[0]}
-        weights = {node: 1.5 if node in best_starting_nodes else 1
-                   for node in self.nodes}
+        all_clients = self.nodes[1:][:]
 
-        return random.choices(self.nodes, weights=weights.values(),
-                              k=self.ants_num)
+        clientes_sorted_by_distance = sorted(
+            all_clients, key=lambda x: self.matrix_costs[x][0])
+        closest_nodes = set(clientes_sorted_by_distance[:self.k_optimal])
+
+        top_ten_solutions = sorted(solutions, key=lambda d: d[1])[:10]
+
+        best_starting_nodes = set()
+        for solution in top_ten_solutions:
+            if len(best_starting_nodes) >= self.k_optimal:
+                break
+
+            for route in solution[0]:
+                node = route[1]
+
+                if node not in best_starting_nodes:
+                    best_starting_nodes.add(node)
+
+        # random_nodes = set(random.sample(
+        #     set(all_clients) - (closest_nodes.union(best_starting_nodes)),
+        #     self.k_optimal))
+
+        def get_node_ranking(node):
+            if node == 0:
+                return 0
+            elif node in best_starting_nodes:
+                return 2.5
+            elif node in closest_nodes:
+                return 1.75
+
+            return 1
+
+        # weights = {node: get_node_ranking(node) for node in all_clients}
+        # candidate_nodes = random.choices(all_clients, weights=weights.values(),
+        #                                  k=self.ants_num)
+        # return candidate_nodes
+
+        weights = [get_node_ranking(node) for node in self.nodes]
+        return weights
 
     def run(self):
         # Starting initial matrixes
@@ -376,8 +406,7 @@ class ACS:
 
             # Select best and worst solutions and compute average cost
             if iterations_solutions_sorted_and_restricted:
-                iteration_best_solution = \
-                    iterations_solutions_sorted_and_restricted[0]
+                iteration_best_solution = iterations_solutions_sorted_and_restricted[0]
             else:
                 iteration_best_solution = iterations_solutions_sorted[0]
             iteration_worst_solution = iterations_solutions_sorted[-1]
