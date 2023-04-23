@@ -14,8 +14,8 @@ from src.new.heuristics import HeuristicModel
 
 
 ALPHA = 1.05  # 0.75, 1, 1.05, 1.1, 1.25, 1.5, 1.75, 2
-BETA = 3.5  # 2, 2.5, 3,  3.5
-GAMMA = 2  # 1, 1.5 2
+BETA = 4.5  # 2, 2.5, 3,  3.5
+GAMMA = 2.5  # 1, 1.5 2
 DELTA = 2  # 1, 2, 3, 4
 # INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
 INSTANCE = 'instances/CVRPLIB/Golden/Golden_20'
@@ -24,7 +24,7 @@ MAX_ITERATIONS = 500
 P = 0.15  # 0.05, 0.1, 0.15, 0.2, 0.25, 0.3
 P_M = 0.2
 Q_0 = 0.8
-SIMILARITY_PERCENTAGE_TO_DO_RESTART = 0.89  # 0.85, 0.9, 0.95, 0.99
+SIMILARITY_PERCENTAGE_TO_DO_RESTART = 0.91  # 0.85, 0.89, 0.9, 0.92, 0.95, 0.99
 TARE_PERCENTAGE = 0.15
 
 
@@ -58,34 +58,34 @@ parameters_heuristics = {
 heuristics = HeuristicModel(**parameters_heuristics)
 matrix_heuristics = heuristics.get_heuristic_matrix(['distance', 'saving'])
 
-# parameters_kmeans = {
-#     'demands': np.array(demands),
-#     'k_optimal': k,
-#     'matrix_coords': matrix_coords[:],
-#     'matrix_distances': matrix_distances[:],
-#     'max_capacity': max_capacity,
-#     'nodes': nodes[:],
-# }
+parameters_kmeans = {
+    'demands': np.array(demands),
+    'k_optimal': k,
+    'matrix_coords': matrix_coords[:],
+    'matrix_distances': matrix_distances[:],
+    'max_capacity': max_capacity,
+    'nodes': nodes[:],
+}
 
 
-# kmeans = KMeans(**parameters_kmeans)
-# clusters, arcs_clusters_lst, best_cost, _, _, solutions = kmeans.run()
+kmeans = KMeans(**parameters_kmeans)
+clusters, arcs_clusters_lst, best_cost, _, _, solutions = kmeans.run()
 
-# best_solutions_clusters = solutions[:]
-# best_solutions_clusters.reverse()
-# best_solutions_clusters = best_solutions_clusters[:int(k/2)]
-# best_solutions_clusters_arcs = []
-# for solution_clusters in best_solutions_clusters:
-#     clusters_arcs = [list(permutations(cluster, 2))
-#                      for cluster in solution_clusters]
-#     best_solutions_clusters_arcs.append(clusters_arcs)
+best_solutions_clusters = solutions[:]
+best_solutions_clusters.reverse()
+best_solutions_clusters = best_solutions_clusters[:int(k/2)]
+best_solutions_clusters_arcs = []
+for solution_clusters in best_solutions_clusters:
+    clusters_arcs = [list(permutations(cluster, 2))
+                     for cluster in solution_clusters]
+    best_solutions_clusters_arcs.append(clusters_arcs)
 
 parameters_ants = {
     'alpha': ALPHA,
     'ants_num': ceil(len(clients) / 2),
     # 'ants_num': len(clients),
     # 'arcs_clusters_importance': .5,  # t_delta[i][j] *= (1 + 0.5)
-    # 'arcs_clusters_lst': [arcs_clusters_lst],
+    'arcs_clusters_lst': [arcs_clusters_lst],
     'beta': BETA,
     'delta': DELTA,
     'demands_array': demands,
@@ -97,7 +97,7 @@ parameters_ants = {
     'max_capacity': max_capacity,
     'max_iterations': min(iterations, MAX_ITERATIONS),
     'model_ant': FreeAnt,
-    'model_ls_it': GeneralVNS,
+    # 'model_ls_it': GeneralVNS,
     'model_problem': VRPModel,
     'nodes': nodes,
     'p_m': P_M,
@@ -105,7 +105,7 @@ parameters_ants = {
     'percentage_of_similarity': SIMILARITY_PERCENTAGE_TO_DO_RESTART,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
-    'work_with_candidate_nodes': True,
+    # 'work_with_candidate_nodes': True,
 }
 
 bwacs = BWACS(**parameters_ants)

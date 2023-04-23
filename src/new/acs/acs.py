@@ -66,7 +66,8 @@ class ACS:
     def create_pheromones_matrix(self,
                                  t_delta: float = 0.5,
                                  t_min: float = 0.1,
-                                 t_max: float = 1.0) -> np.ndarray:
+                                 t_max: float = 1.0,
+                                 solutions=None) -> np.ndarray:
         """
         Creates the initial matrix of pheromone trail levels.
 
@@ -82,30 +83,42 @@ class ACS:
         """
 
         shape = len(self.nodes)
-        matrix_pheromones = np.full((shape, shape), t_max)
-
-        # if self.arcs_clusters_lst:
-        #     num_clusters = len(self.arcs_clusters_lst)
-        #     clusters_factor = 1 + \
-        #         (self.arcs_clusters_importance / num_clusters)
-
-        #     clusters_arcs_flattened = []
-        #     for clusters_arcs in self.arcs_clusters_lst:
-        #         clusters_arcs_flattened += get_flattened_list(clusters_arcs)
-
-        #     for i, j in clusters_arcs_flattened:
-        #         matrix_pheromones[i][j] *= clusters_factor
+        # matrix_pheromones = np.full((shape, shape), t_max)
+        matrix_pheromones = np.full((shape, shape), t_delta)
 
         if self.arcs_clusters_lst:
-            clusters_arcs_flattened = []
+            num_clusters = len(self.arcs_clusters_lst)
+            clusters_factor = 1 + \
+                (self.arcs_clusters_importance / num_clusters)
 
+            clusters_arcs_flattened = []
             for clusters_arcs in self.arcs_clusters_lst:
                 clusters_arcs_flattened += get_flattened_list(clusters_arcs)
 
-            for i in range(shape):
-                for j in range(shape):
-                    if (i, j) not in clusters_arcs_flattened:
-                        matrix_pheromones[i][j] = t_delta
+            for i, j in clusters_arcs_flattened:
+                matrix_pheromones[i][j] = t_delta * (1 + clusters_factor)
+
+        # if self.arcs_clusters_lst:
+        #     clusters_arcs_flattened = []
+
+        #     for clusters_arcs in self.arcs_clusters_lst:
+        #         clusters_arcs_flattened += get_flattened_list(clusters_arcs)
+
+        #     for i in range(shape):
+        #         for j in range(shape):
+        #             if (i, j) not in clusters_arcs_flattened:
+        #                 matrix_pheromones[i][j] = t_delta
+
+        if solutions:
+            solutions_sorted = sorted(solutions, key=lambda d: d[1])
+            best_solutions = solutions_sorted[:5]
+
+            for solution in best_solutions:
+                solution_flattened_arcs = get_flattened_list(solution[2])
+
+                for i, j in solution_flattened_arcs:
+                    matrix_pheromones[i][j] += self.get_acs_fitness(
+                        solution[1]) * self.p
 
         return matrix_pheromones
 
@@ -301,10 +314,11 @@ class ACS:
                 break
 
             for route in solution[0]:
-                node = route[1]
+                start_node = route[1]
+                # end_node = route[-2]
 
-                if node not in best_starting_nodes:
-                    best_starting_nodes.add(node)
+                best_starting_nodes.add(start_node)
+                # best_starting_nodes.add(end_node)
 
         # random_nodes = set(random.sample(
         #     set(all_clients) - (closest_nodes.union(best_starting_nodes)),

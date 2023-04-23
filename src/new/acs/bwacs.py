@@ -91,7 +91,7 @@ class BWACS(ACS):
             for j in range(i + 1, self.matrix_pheromones.shape[0]):
                 if np.random.rand() < self.p_m:
                     mutation_value = (
-                        self.p * mutation_intensity * t_threshold) * 0.00005
+                        self.p * mutation_intensity * t_threshold) * 0.0025
                     mutation_value *= np.random.choice([-1, 1])
 
                     self.matrix_pheromones[i][j] += mutation_value
@@ -409,7 +409,7 @@ class BWACS(ACS):
                 iteration_output.append('\t* Stagnation detected!')
                 self.t_delta = (self.t_min + self.t_max) / 2
                 self.matrix_pheromones = self.create_pheromones_matrix(
-                    self.t_delta, self.t_min, self.t_max)
+                    self.t_delta, self.t_min, self.t_max, best_solutions)
                 restarts.append(i)
 
             if len(restarts):
