@@ -20,6 +20,7 @@ class BWACS(ACS):
         self.delta = 2
         self.model_ls_it = None
         self.p_m = 0.3
+        self.type_mutation = None
 
         self.__dict__.update(kwargs)
 
