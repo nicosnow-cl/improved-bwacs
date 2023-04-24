@@ -8,7 +8,6 @@ from .acs import ACS
 
 class BWACS(ACS):
     delta: int
-    model_ls_it: Any
     p_m: float
     percent_arcs_limit: float
     percent_quality_limit: float
@@ -18,7 +17,6 @@ class BWACS(ACS):
         super().__init__(**kwargs)
 
         self.delta = 2
-        self.model_ls_it = None
         self.p_m = 0.3
         self.type_mutation = None
 
@@ -246,10 +244,11 @@ class BWACS(ACS):
         self.print_intance_parameters()
 
         errors = self.model_problem.validate_instance(
-            self.nodes, self.demands_array, self.max_capacity)
+            self.nodes, self.demands, self.max_capacity)
         if errors:
             raise Exception(errors)
 
+        # Starting initial matrixes
         self.t_delta = self.get_initial_t_delta(self.matrix_costs)
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
         self.matrix_probabilities = self.get_probabilities_matrix(
@@ -257,8 +256,8 @@ class BWACS(ACS):
 
         # Greedy ants to find the best initial solution
         greedy_ant = self.model_ant(self.nodes,
-                                    self.demands_array,
-                                    self.matrix_probabilities,
+                                    self.demands,
+                                    self.matrix_probabilities.copy(),
                                     self.matrix_costs,
                                     self.max_capacity,
                                     self.tare,
@@ -282,7 +281,7 @@ class BWACS(ACS):
 
         # Create ants
         ant = self.model_ant(self.nodes,
-                             self.demands_array,
+                             self.demands,
                              self.matrix_probabilities.copy(),
                              self.matrix_costs,
                              self.max_capacity,
@@ -290,10 +289,11 @@ class BWACS(ACS):
                              self.q0,
                              self.model_problem)
 
+        # Set iteration local search method
         ls_it = None
         if self.model_ls_it:
             ls_it = self.model_ls_it(self.matrix_costs,
-                                     self.demands_array,
+                                     self.demands,
                                      self.tare,
                                      self.max_capacity,
                                      self.k_optimal,
@@ -320,7 +320,7 @@ class BWACS(ACS):
                 iterations_solutions.append(solution)
 
                 # Local pheromone update
-                if self.local_pheromone_update and \
+                if self.pheromones_local_update and \
                         len(solution[0]) == self.k_optimal:
                     local_factor = self.p / len(self.nodes)
 
@@ -368,11 +368,10 @@ class BWACS(ACS):
                         std_iteration_costs)
             ]
 
-            # LS by VNS on best iteration solution
+            # LS on best iteration solution
             ls_it_solution = (None, np.inf, None, None, None)
             if ls_it:
                 ls_it_solution = ls_it.improve(iteration_best_solution[0], i)
-
                 iteration_output[1] += ', LS({})'.format(ls_it_solution[1])
 
             # Update global best solution if LS best solution is better
@@ -454,7 +453,7 @@ class BWACS(ACS):
 
             # Update candidate starting nodes
             if self.work_with_candidate_nodes:
-                candidate_starting_nodes = self.get_candidate_starting_nodes(
+                candidate_starting_nodes = self.get_candidate_nodes_weight(
                     best_solutions)
 
             # Print iteration output

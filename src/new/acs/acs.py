@@ -3,6 +3,7 @@ from sklearn.preprocessing import MinMaxScaler
 from typing import Any, List, Tuple
 import numpy as np
 import time
+import random
 
 from ..helpers import same_line_print, get_flattened_list, get_inversed_matrix
 from ..models import ProblemModel
@@ -14,11 +15,10 @@ class ACS:
     arcs_clusters_importance: float
     arcs_clusters_lst: List[List[Tuple]]
     beta: float
-    demands_array: np.ndarray
+    demands: np.ndarray
     evaporation_rate: float
     ipynb: bool
     k_optimal: int
-    local_pheromone_update: bool
     matrix_costs: np.ndarray
     matrix_heuristics: np.ndarray
     matrix_pheromones: np.ndarray
@@ -26,32 +26,34 @@ class ACS:
     max_capacity: float
     max_iterations: int
     model_ant: Any
-    model_local_search: Any
+    model_ls_it: Any
     model_problem: ProblemModel
     nodes: List[int]
     p: float
+    pheromones_local_update: bool
     q0: float
     t_delta: float
     t_max: float
     t_min: float
     tare: float
+    type_candidate_nodes: str
     type_probabilities_matrix: str
-    work_with_candidate_nodes: bool
 
     def __init__(self, **kwargs):
-        self.arcs_clusters_importance = 1.5
+        self.arcs_clusters_importance = 0
         self.arcs_clusters_lst = None
         self.ipynb = False
-        self.local_pheromone_update = False
+        self.model_ls_it = None
+        self.p = 0.2
+        self.evaporation_rate = (1 - self.p)
+        self.pheromones_local_update = False
         self.t_max = 1
         self.t_min = 0
+        self.t_delta = (self.t_min + self.t_max) / 2
+        self.type_candidate_nodes = None
         self.type_probabilities_matrix = 'normal'
-        self.work_with_candidate_nodes = False
 
         self.__dict__.update(kwargs)
-
-        self.t_delta = (self.t_min + self.t_max) / 2
-        self.evaporation_rate = (1 - self.p)
 
     def print_intance_parameters(self):
         print('\nPARAMETERS:')
@@ -291,7 +293,7 @@ class ACS:
             return np.multiply(np.power(pheromones_matrix, self.alpha),
                                self.matrix_heuristics)
 
-    def get_candidate_starting_nodes(self, solutions):
+    def get_candidate_nodes_weight(self, solutions, type: str = 'best'):
         """
         Returns a list of candidate starting nodes for the ants, biased
         towards the best starting nodes from the given solutions.
@@ -305,48 +307,59 @@ class ACS:
             list: A list of candidate starting nodes for the ants.
         """
 
-        all_clients = self.nodes[1:][:]
+        if type == 'random':
+            return [random.random() for _ in range(0, len(self.nodes))]
+        else:
+            all_clients = self.nodes[1:][:]
 
-        clientes_sorted_by_distance = sorted(
-            all_clients, key=lambda x: self.matrix_costs[x][0])
-        closest_nodes = set(clientes_sorted_by_distance[:self.k_optimal])
+            clientes_sorted_by_distance = sorted(
+                all_clients, key=lambda x: self.matrix_costs[x][0])
+            closest_nodes = set(clientes_sorted_by_distance[:self.k_optimal])
 
-        top_ten_solutions = sorted(solutions, key=lambda d: d[1])[:10]
+            top_ten_solutions = sorted(solutions, key=lambda d: d[1])[:10]
 
-        best_starting_nodes = set()
-        for solution in top_ten_solutions:
-            if len(best_starting_nodes) >= self.k_optimal:
-                break
+            best_starting_nodes = set()
+            for solution in top_ten_solutions:
+                if len(best_starting_nodes) >= self.k_optimal:
+                    break
 
-            for route in solution[0]:
-                start_node = route[1]
-                # end_node = route[-2]
+                for route in solution[0]:
+                    start_node = route[1]
+                    # end_node = route[-2]
 
-                best_starting_nodes.add(start_node)
-                # best_starting_nodes.add(end_node)
+                    best_starting_nodes.add(start_node)
+                    # best_starting_nodes.add(end_node)
 
-        def get_node_ranking(node):
-            if node == 0:
-                return 0
-            elif node in best_starting_nodes:
-                return 2.5
-            elif node in closest_nodes:
-                return 1.75
+            def get_node_ranking(node):
+                if node == 0:
+                    return 0
+                elif node in best_starting_nodes:
+                    return 2.5
+                elif node in closest_nodes:
+                    return 1.75
 
-            return 1
+                return 1
 
-        weights = [get_node_ranking(node) for node in self.nodes]
-        return weights
+            weights = [get_node_ranking(node) for node in self.nodes]
+            return weights
 
     def run(self):
+        self.print_intance_parameters()
+
+        errors = self.model_problem.validate_instance(
+            self.nodes, self.demands, self.max_capacity)
+        if errors:
+            raise Exception(errors)
+
         # Starting initial matrixes
         self.t_delta = self.get_initial_t_delta(self.matrix_costs)
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
-        self.matrix_probabilities = self.get_probabilities_matrix()
+        self.matrix_probabilities = self.get_probabilities_matrix(
+            self.matrix_pheromones.copy())
 
         # Greedy ants to find the best initial solution
         greedy_ant = self.model_ant(self.nodes,
-                                    self.demands_array,
+                                    self.demands,
                                     self.matrix_probabilities,
                                     self.matrix_costs,
                                     self.max_capacity,
@@ -364,21 +377,34 @@ class ACS:
         self.t_min, self.t_max = self.calculate_t_min_t_max_mmas(
             greedy_ant_best_solution[1])
         self.t_delta = (self.t_min + self.t_max) / 2
-        self.matrix_pheromones = self.create_pheromones_matrix(self.t_delta)
-        self.matrix_probabilities = self.get_probabilities_matrix()
+        self.matrix_pheromones = self.create_pheromones_matrix(
+            self.t_delta, self.t_min, self.t_max)
+        self.matrix_probabilities = self.get_probabilities_matrix(
+            self.matrix_pheromones.copy())
 
         # Create ants
         ant = self.model_ant(self.nodes,
-                             self.demands_array,
-                             self.matrix_probabilities,
+                             self.demands,
+                             self.matrix_probabilities.copy(),
                              self.matrix_costs,
                              self.max_capacity,
                              self.tare,
                              self.q0,
                              self.model_problem)
 
+        # Set iteration local search method
+        ls_it = None
+        if self.model_ls_it:
+            ls_it = self.model_ls_it(self.matrix_costs,
+                                     self.demands,
+                                     self.tare,
+                                     self.max_capacity,
+                                     self.k_optimal,
+                                     self.max_iterations,
+                                     self.model_problem)
+
         best_solutions = []
-        candidate_starting_nodes = []
+        candidate_nodes_weights = None
         global_best_solution = (None, np.inf, None, None, None)
         max_outputs_to_print = 10
         outputs_to_print = []
@@ -386,26 +412,31 @@ class ACS:
 
         # Loop over max_iterations
         for i in range(self.max_iterations):
+            iteration_output = [
+                f'Iteration {i + 1} (Global best: {global_best_solution[1]})']
             iterations_solutions = []
 
             # Generate solutions for each ant and update pheromones matrix
             for _ in range(self.ants_num):
-                solution = ant.generate_solution(candidate_starting_nodes)
+                solution = ant.generate_solution(
+                    candidate_nodes_weights)
                 iterations_solutions.append(solution)
 
                 # Local pheromone update
-                if self.local_pheromone_update and \
+                if self.pheromones_local_update and \
                         len(solution[0]) == self.k_optimal:
-                    ant_factor = (1 - self.p) / self.ants_num
+                    local_factor = self.p / len(self.nodes)
 
                     # Update pheromones matrix with local update
                     self.update_pheromones_matrix(
-                        solution[2], solution[1], ant_factor)
+                        solution[2], solution[1], local_factor)
                     self.set_bounds_to_pheromones_matrix()
 
                     # Update probabilities matrix
-                    self.matrix_probabilities = self.get_probabilities_matrix()
-                    ant.set_probabilities_matrix(self.matrix_probabilities)
+                    self.matrix_probabilities = self.get_probabilities_matrix(
+                        self.matrix_pheromones.copy())
+                    ant.set_probabilities_matrix(
+                        self.matrix_probabilities.copy())
 
             # Sort solutions by fitness and filter by k_optimal
             iterations_solutions_sorted = sorted(iterations_solutions,
@@ -414,27 +445,43 @@ class ACS:
                 solution for solution in iterations_solutions_sorted
                 if len(solution[0]) == self.k_optimal]
 
-            # Select best and worst solutions and compute average cost
+            # Select best and worst solutions and compute relative costs
             if iterations_solutions_sorted_and_restricted:
                 iteration_best_solution = \
                     iterations_solutions_sorted_and_restricted[0]
             else:
                 iteration_best_solution = iterations_solutions_sorted[0]
+
             iteration_worst_solution = iterations_solutions_sorted[-1]
-            average_iteration_costs = np.mean(
+            median_iteration_costs = np.median(
+                [solution[1] for solution in iterations_solutions_sorted])
+            avg_iteration_costs = np.mean(
+                [solution[1] for solution in iterations_solutions_sorted])
+            std_iteration_costs = np.std(
                 [solution[1] for solution in iterations_solutions_sorted])
 
             # Update iteration output
-            iteration_output = [
-                f'Iteration {i + 1}',
-                '    > Iteration resoluts: BEST({}), WORST({}), AVG({})'
+            iteration_output = iteration_output + [
+                '\t> Iteration results: BEST({}), WORST({})'
                 .format(iteration_best_solution[1],
-                        iteration_worst_solution[1],
-                        average_iteration_costs)
+                        iteration_worst_solution[1]),
+                '\t                     MED({}), AVG({}), STD({})'
+                .format(median_iteration_costs,
+                        avg_iteration_costs,
+                        std_iteration_costs)
             ]
 
-            # Update global best solution if iteration best solution is better
-            if iteration_best_solution[1] < global_best_solution[1]:
+            # LS on best iteration solution
+            ls_it_solution = (None, np.inf, None, None, None)
+            if ls_it:
+                ls_it_solution = ls_it.improve(iteration_best_solution[0], i)
+                iteration_output[1] += ', LS({})'.format(ls_it_solution[1])
+
+            # Update global best solution if LS best solution is better
+            # or iteration best solution is better
+            if ls_it_solution[1] < global_best_solution[1]:
+                global_best_solution = ls_it_solution
+            elif iteration_best_solution[1] < global_best_solution[1]:
                 global_best_solution = iteration_best_solution
 
             # Evaporate pheromones and update pheromone matrix by global best
@@ -448,15 +495,17 @@ class ACS:
             self.set_bounds_to_pheromones_matrix()
 
             # Update probabilities matrix
-            self.matrix_probabilities = self.get_probabilities_matrix()
-            ant.set_probabilities_matrix(self.matrix_probabilities)
+            self.matrix_probabilities = self.get_probabilities_matrix(
+                self.matrix_pheromones.copy())
+            ant.set_probabilities_matrix(self.matrix_probabilities.copy())
 
             # Append iteration best solution to list of best solutions
             best_solutions.append(iteration_best_solution)
 
-            if self.work_with_candidate_nodes:
-                candidate_starting_nodes = self.get_candidate_starting_nodes(
-                    best_solutions)
+            # Update candidate starting nodes
+            if self.type_candidate_nodes:
+                candidate_nodes_weights = self.get_candidate_nodes_weight(
+                    best_solutions, self.type_candidate_nodes)
 
             # Print iteration output
             if self.ipynb:
