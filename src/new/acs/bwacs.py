@@ -2,15 +2,17 @@ from typing import Any, List
 import numpy as np
 import time
 
+from ..helpers import get_flattened_list, same_line_print
 from .acs import ACS
-from ..helpers import get_flattened_list, same_line_print, get_route_load
 
 
 class BWACS(ACS):
     delta: int
     model_ls_it: Any
     p_m: float
-    percentage_of_similarity: float
+    percent_arcs_limit: float
+    percent_quality_limit: float
+    type_mutation: str
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -18,7 +20,6 @@ class BWACS(ACS):
         self.delta = 2
         self.model_ls_it = None
         self.p_m = 0.3
-        self.percentage_of_similarity = 50
 
         self.__dict__.update(kwargs)
 
@@ -48,10 +49,10 @@ class BWACS(ACS):
                 if (i, j) not in global_best_solution_arcs_set:
                     self.matrix_pheromones[i][j] *= self.evaporation_rate
 
-    def mutate_pheromones_matrix(self,
-                                 solution_arcs,
-                                 current_iteration,
-                                 restart_iteration):
+    def mutate_pheromones_matrix_by_row(self,
+                                        solution_arcs,
+                                        current_iteration,
+                                        restart_iteration):
         """
         Mutate the pheromone matrix of the ant colony optimization algorithm
         based on a solution.
@@ -73,28 +74,34 @@ class BWACS(ACS):
                                                          restart_iteration)
         t_threshold = self.get_t_threshold(solution_arcs)
 
-        # MUTATION on every element of the matrix
-        # mutation_value = (self.p * mutation_intensity * t_threshold) \
-        #     * 0.01
-
-        # # Use triu_indices to get upper triangle indices
-        # iu = np.triu_indices(self.matrix_pheromones.shape[0], k=1)
-
-        # # Update elements in upper triangle with random mutations
-        # mask = np.random.rand(len(iu[0])) < self.p_m
-        # mut = np.random.choice([-1, 1], size=len(iu[0])) * mutation_value
-
-        # self.matrix_pheromones[iu] += mask * mut
-
-        # MUTATION on every row of the matrix
         for i in range(self.matrix_pheromones.shape[0]):
             for j in range(i + 1, self.matrix_pheromones.shape[0]):
                 if np.random.rand() < self.p_m:
                     mutation_value = (
-                        self.p * mutation_intensity * t_threshold) * 0.0025
+                        self.p * mutation_intensity * t_threshold) * 0.00025
                     mutation_value *= np.random.choice([-1, 1])
 
                     self.matrix_pheromones[i][j] += mutation_value
+
+    def mutaute_pheromones_matrix_by_arcs(self,
+                                          solution_arcs,
+                                          current_iteration,
+                                          restart_iteration):
+        mutation_intensity = self.get_mutation_intensity(current_iteration,
+                                                         restart_iteration)
+        t_threshold = self.get_t_threshold(solution_arcs)
+
+        mutation_value = (self.p * mutation_intensity * t_threshold) \
+            * 0.01
+
+        # Use triu_indices to get upper triangle indices
+        iu = np.triu_indices(self.matrix_pheromones.shape[0], k=1)
+
+        # Update elements in upper triangle with random mutations
+        mask = np.random.rand(len(iu[0])) < self.p_m
+        mut = np.random.choice([-1, 1], size=len(iu[0])) * mutation_value
+
+        self.matrix_pheromones[iu] += mask * mut
 
     def get_mutation_intensity(self,
                                iteration: int,
@@ -144,7 +151,8 @@ class BWACS(ACS):
 
     def is_stagnation_reached_by_arcs(self,
                                       it_best_solution_arcs,
-                                      it_worst_solution_arcs):
+                                      it_worst_solution_arcs,
+                                      similarity_percentage: float):
         """
         Determine if the algorithm has reached stagnation based on the current
         and previous best and worst solutions.
@@ -172,9 +180,9 @@ class BWACS(ACS):
 
         a = len(different_tuples)
         b = len(it_best_solution_arcs_set.union(it_worst_solution_arcs_set))
-        actual_percentage = (a / b) * 100
+        arcs_similarity = (a / b)
 
-        return actual_percentage >= self.percentage_of_similarity
+        return arcs_similarity >= similarity_percentage
 
     def is_stagnation_reached_by_solutions(self,
                                            best_actual_quality: float,
@@ -291,16 +299,16 @@ class BWACS(ACS):
                                      self.max_iterations,
                                      self.model_problem)
 
+        best_prev_quality = np.inf
         best_solutions = []
         candidate_starting_nodes = []
         global_best_solution = (None, np.inf, None, None, None)
         max_outputs_to_print = 10
         outputs_to_print = []
+        prev_median = np.inf
         restarts = []
         start_time = time.time()
 
-        best_prev_quality = np.inf
-        prev_median = np.inf
         # Loop over max_iterations
         for i in range(self.max_iterations):
             iterations_solutions = []
@@ -322,7 +330,8 @@ class BWACS(ACS):
 
                     # Update probabilities matrix
                     ant.set_probabilities_matrix(
-                        self.get_probabilities_matrix(self.matrix_pheromones).copy())
+                        self.get_probabilities_matrix(self.matrix_pheromones)
+                        .copy())
 
             # Sort solutions by fitness and filter by k_optimal
             iterations_solutions_sorted = sorted(iterations_solutions,
@@ -331,7 +340,7 @@ class BWACS(ACS):
                 solution for solution in iterations_solutions_sorted
                 if len(solution[0]) == self.k_optimal]
 
-            # Select best and worst solutions and compute average cost
+            # Select best and worst solutions and compute relative costs
             if iterations_solutions_sorted_and_restricted:
                 iteration_best_solution = \
                     iterations_solutions_sorted_and_restricted[0]
@@ -363,14 +372,7 @@ class BWACS(ACS):
             if ls_it:
                 ls_it_solution = ls_it.improve(iteration_best_solution[0], i)
 
-                # if ls_it_solution[1] < iteration_best_solution[1]:
-                #     iteration_best_solution = ls_it_solution
-
                 iteration_output[1] += ', LS({})'.format(ls_it_solution[1])
-
-            # Update global best solution if iteration best solution is better
-            # if iteration_best_solution[1] < global_best_solution[1]:
-            #     global_best_solution = iteration_best_solution
 
             # Update global best solution if LS best solution is better
             # or iteration best solution is better
@@ -380,12 +382,9 @@ class BWACS(ACS):
                 global_best_solution = iteration_best_solution
 
             # Evaporate pheromones and update pheromone matrix by BWACS
-            # global_factor = (self.ants_num * self.p)
             self.evaporate_pheromones_matrix()
             self.update_pheromones_matrix(global_best_solution[2],
                                           global_best_solution[1])
-            #   global_best_solution[1],
-            #   global_factor)
             self.penalize_pheromones_matrix(global_best_solution[2],
                                             iteration_worst_solution[2])
 
@@ -393,31 +392,52 @@ class BWACS(ACS):
             self.t_min, self.t_max = self.calculate_t_min_t_max_mmas(
                 global_best_solution[1])
 
-            # Mutate pheromone matrix and check stagnation
-            # if self.reach_stagnation(iteration_best_solution[2],
-            #                          iteration_worst_solution[2]):
-            restarts_avg_steps = self.get_avg_steps_between_restarts(restarts)
-            remaining_iterations = self.max_iterations - i
-            if remaining_iterations >= restarts_avg_steps and \
-                self.is_stagnation_reached_by_solutions(
-                    iteration_best_solution[1],
-                    best_prev_quality,
-                    iterations_solutions_sorted[-1][1],
-                    median_iteration_costs,
-                    prev_median,
-                    self.percentage_of_similarity):
-                iteration_output.append('\t* Stagnation detected!')
-                self.t_delta = (self.t_min + self.t_max) / 2
-                self.matrix_pheromones = self.create_pheromones_matrix(
-                    self.t_delta, self.t_min, self.t_max, best_solutions)
-                restarts.append(i)
+            # Restart pheromones matrix if stagnation is reached
+            if self.percent_arcs_limit:
+                restarts_avg_steps = self.get_avg_steps_between_restarts(
+                    restarts)
+                remaining_iterations = self.max_iterations - i
 
-            if len(restarts):
-                self.mutate_pheromones_matrix(global_best_solution[2],
-                                              i, restarts[-1])
+                if remaining_iterations >= restarts_avg_steps and \
+                    self.is_stagnation_reached_by_arcs(
+                        iteration_best_solution[2],
+                        iteration_worst_solution[2],
+                        self.percent_arcs_limit):
+                    iteration_output.append('\t* Stagnation detected!')
+                    self.t_delta = (self.t_min + self.t_max) / 2
+                    self.matrix_pheromones = self.create_pheromones_matrix(
+                        self.t_delta, self.t_min, self.t_max, best_solutions)
+                    restarts.append(i)
+            elif self.percent_quality_limit:
+                restarts_avg_steps = self.get_avg_steps_between_restarts(
+                    restarts)
+                remaining_iterations = self.max_iterations - i
+
+                if remaining_iterations >= restarts_avg_steps and \
+                    self.is_stagnation_reached_by_solutions(
+                        iteration_best_solution[1],
+                        best_prev_quality,
+                        iterations_solutions_sorted[-1][1],
+                        median_iteration_costs,
+                        prev_median,
+                        self.percent_quality_limit):
+                    iteration_output.append('\t* Stagnation detected!')
+                    self.t_delta = (self.t_min + self.t_max) / 2
+                    self.matrix_pheromones = self.create_pheromones_matrix(
+                        self.t_delta, self.t_min, self.t_max, best_solutions)
+                    restarts.append(i)
+
+            # Mutate pheromones matrix
+            if self.type_mutation == 'arcs':
+                self.mutaute_pheromones_matrix_by_arcs(global_best_solution[2],
+                                                       i, restarts[-1])
+            elif self.type_mutation == 'row':
+                self.mutate_pheromones_matrix_by_row(global_best_solution[2],
+                                                     i, restarts[-1])
 
             self.set_bounds_to_pheromones_matrix()
 
+            # Update probabilities matrix
             self.matrix_probabilities = self.get_probabilities_matrix(
                 self.matrix_pheromones)
             ant.set_probabilities_matrix(self.matrix_probabilities.copy())

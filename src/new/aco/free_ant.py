@@ -53,18 +53,11 @@ class FreeAnt:
         if q >= self.q0:
             return valid_nodes[probabilities_of_nodes.argmax()]
         else:
-            try:
-                cum_weights = probabilities_of_nodes.cumsum()
-                cum_weights /= cum_weights[-1]
+            cum_weights = probabilities_of_nodes.cumsum()
+            cum_weights /= cum_weights[-1]
 
-                return valid_nodes[np.searchsorted(cum_weights,
-                                                   np.random.rand())]
-
-            # probabilities_of_nodes /= probabilities_of_nodes.sum()
-            # return np.random.choice(valid_nodes,
-            #                         p=probabilities_of_nodes)
-            except ValueError:
-                print(probabilities_of_nodes)
+            return valid_nodes[np.searchsorted(cum_weights,
+                                               np.random.rand())]
 
     def get_valid_nodes(self, unvisited_nodes, vehicle: VehicleModel):
         return [node for node in unvisited_nodes
@@ -91,19 +84,6 @@ class FreeAnt:
 
         if ant_best_start_nodes:
             np_weights = np.array(ant_best_start_nodes)
-
-            # valid_nodes_weights = np_weights[valid_nodes]
-            # valid_nodes_weights /= valid_nodes_weights.sum()
-            # s = np.random.choice(valid_nodes, p=valid_nodes_weights) #this is bad
-
-            # valid_nodes_weights = np_weights[valid_nodes]
-            # s = random.choices(
-            #     population=valid_nodes,
-            #     weights=valid_nodes_weights,
-            #     k=1
-            # )[0] # this is bad too
-
-            # this is the best
             s = valid_nodes[np_weights[valid_nodes].argmax()]
 
             route_cost += self.problem_model.get_cost_between_two_nodes(
@@ -154,8 +134,6 @@ class FreeAnt:
             loads.append(vehicle_load)
 
             unvisited_nodes.difference_update(route)
-            # ant_best_start_nodes = [
-            #     node for node in ant_best_start_nodes if node not in route]
 
         fitness = sum(costs)
         routes_arcs = [np.array(get_route_arcs(route)) for route in solution]

@@ -13,19 +13,25 @@ from src.readers import ReaderCVRPLIB
 from src.new.heuristics import HeuristicModel
 
 
-ALPHA = 1.05  # 0.75, 1, 1.05, 1.1, 1.25, 1.5, 1.75, 2
-BETA = 4.5  # 2, 2.5, 3,  3.5
-GAMMA = 2.5  # 1, 1.5 2
+ALPHA = 1.1  # 0.75, 1, 1.05, 1.1, 1.25, 1.5, 1.75, 2
+BETA = 3  # 2, 2.5, 3,  3.5
+GAMMA = 2  # 1, 1.5 2
 DELTA = 2  # 1, 2, 3, 4
 # INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
-INSTANCE = 'instances/CVRPLIB/Golden/Golden_20'
+INSTANCE = 'instances/CVRPLIB/Golden/Golden_12'
 MIN_ITERATIONS = 200
 MAX_ITERATIONS = 500
+ANTS_NUM_RELATION = 2
 P = 0.15  # 0.05, 0.1, 0.15, 0.2, 0.25, 0.3
 P_M = 0.2
 Q_0 = 0.8
-SIMILARITY_PERCENTAGE_TO_DO_RESTART = 0.91  # 0.85, 0.89, 0.9, 0.92, 0.95, 0.99
+SIMILARITY_OF_ARCS_TO_DO_RESTART = 0.75  # 0.60, 0.70, 0.75, 0.80
+# 0.885, 0.89, 0.9, 0.92, 0.95, 0.99
+SIMILARITY_OF_QUALITIES_TO_DO_RESTART = None
 TARE_PERCENTAGE = 0.15
+PROBABILITIES_MATRIX_TYPE = 'normal'
+THREAD = False
+WORK_WITH_CANDIDATE_NODES = False
 
 
 reader = ReaderCVRPLIB(INSTANCE)
@@ -82,9 +88,8 @@ for solution_clusters in best_solutions_clusters:
 
 parameters_ants = {
     'alpha': ALPHA,
-    'ants_num': ceil(len(clients) / 2),
-    # 'ants_num': len(clients),
-    # 'arcs_clusters_importance': .5,  # t_delta[i][j] *= (1 + 0.5)
+    'ants_num': ceil(len(clients) / ANTS_NUM_RELATION),
+    'arcs_clusters_importance': .5,  # t_delta[i][j] *= (1 + 0.5)
     'arcs_clusters_lst': [arcs_clusters_lst],
     'beta': BETA,
     'delta': DELTA,
@@ -97,20 +102,22 @@ parameters_ants = {
     'max_capacity': max_capacity,
     'max_iterations': min(iterations, MAX_ITERATIONS),
     'model_ant': FreeAnt,
-    # 'model_ls_it': GeneralVNS,
+    'model_ls_it': GeneralVNS,
     'model_problem': VRPModel,
     'nodes': nodes,
     'p_m': P_M,
     'p': P,
-    'percentage_of_similarity': SIMILARITY_PERCENTAGE_TO_DO_RESTART,
+    'percent_arcs_limit': SIMILARITY_OF_ARCS_TO_DO_RESTART,
+    'percent_quality_limit': SIMILARITY_OF_QUALITIES_TO_DO_RESTART,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
-    # 'work_with_candidate_nodes': True,
+    'work_with_candidate_nodes': WORK_WITH_CANDIDATE_NODES,
 }
 
 bwacs = BWACS(**parameters_ants)
-bwacs.run()
 
-# Run the algorithm in a new thread
-# thread = Thread(target=bwacs.run)
-# thread.start()
+if THREAD:
+    thread = Thread(target=bwacs.run)
+    thread.start()
+else:
+    bwacs.run()

@@ -2,7 +2,6 @@ from math import exp, log
 from sklearn.preprocessing import MinMaxScaler
 from typing import Any, List, Tuple
 import numpy as np
-import random
 import time
 
 from ..helpers import same_line_print, get_flattened_list, get_inversed_matrix
@@ -36,6 +35,7 @@ class ACS:
     t_max: float
     t_min: float
     tare: float
+    type_probabilities_matrix: str
     work_with_candidate_nodes: bool
 
     def __init__(self, **kwargs):
@@ -43,12 +43,14 @@ class ACS:
         self.arcs_clusters_lst = None
         self.ipynb = False
         self.local_pheromone_update = False
-        self.work_with_candidate_nodes = False
-        self.t_min = 0
         self.t_max = 1
+        self.t_min = 0
+        self.type_probabilities_matrix = 'normal'
+        self.work_with_candidate_nodes = False
 
         self.__dict__.update(kwargs)
 
+        self.t_delta = (self.t_min + self.t_max) / 2
         self.evaporation_rate = (1 - self.p)
 
     def print_intance_parameters(self):
@@ -83,8 +85,8 @@ class ACS:
         """
 
         shape = len(self.nodes)
-        # matrix_pheromones = np.full((shape, shape), t_max)
         matrix_pheromones = np.full((shape, shape), t_delta)
+        # matrix_pheromones = np.full((shape, shape), t_delta)
 
         if self.arcs_clusters_lst:
             num_clusters = len(self.arcs_clusters_lst)
@@ -269,22 +271,25 @@ class ACS:
             A matrix(ndarray) of probabilities of choosing an arc.
         """
 
-        # inv_distances_matrix = get_inversed_matrix(
-        #     self.matrix_costs)
-        # min_not_zero_value = inv_distances_matrix[
-        #     inv_distances_matrix != 0].min()
-        # max_value = inv_distances_matrix[inv_distances_matrix != np.inf].max()
+        if self.type_probabilities_matrix == 'normalized':
+            inv_distances_matrix = get_inversed_matrix(
+                self.matrix_costs)
+            min_not_zero_value = inv_distances_matrix[
+                inv_distances_matrix != 0].min()
+            max_value = \
+                inv_distances_matrix[inv_distances_matrix != np.inf].max()
 
-        # # Here we normalice the values between min distance and max distance.
-        # scaler = MinMaxScaler(feature_range=(min_not_zero_value, max_value))
-        # norm_matrix_pheromones = scaler.fit_transform(pheromones_matrix)
+            # Here we normalice the values between min distance
+            # and max distance.
+            scaler = MinMaxScaler(feature_range=(
+                min_not_zero_value, max_value))
+            norm_matrix_pheromones = scaler.fit_transform(pheromones_matrix)
 
-        # return np.multiply(np.power(norm_matrix_pheromones, self.alpha),
-        #                    self.matrix_heuristics)
-
-        return np.multiply(np.power(pheromones_matrix, self.alpha),
-                           #    np.power(self.matrix_heuristics, self.beta))
-                           self.matrix_heuristics)
+            return np.multiply(np.power(norm_matrix_pheromones, self.alpha),
+                               self.matrix_heuristics)
+        else:
+            return np.multiply(np.power(pheromones_matrix, self.alpha),
+                               self.matrix_heuristics)
 
     def get_candidate_starting_nodes(self, solutions):
         """
@@ -320,10 +325,6 @@ class ACS:
                 best_starting_nodes.add(start_node)
                 # best_starting_nodes.add(end_node)
 
-        # random_nodes = set(random.sample(
-        #     set(all_clients) - (closest_nodes.union(best_starting_nodes)),
-        #     self.k_optimal))
-
         def get_node_ranking(node):
             if node == 0:
                 return 0
@@ -333,11 +334,6 @@ class ACS:
                 return 1.75
 
             return 1
-
-        # weights = {node: get_node_ranking(node) for node in all_clients}
-        # candidate_nodes = random.choices(all_clients, weights=weights.values(),
-        #                                  k=self.ants_num)
-        # return candidate_nodes
 
         weights = [get_node_ranking(node) for node in self.nodes]
         return weights
@@ -420,7 +416,8 @@ class ACS:
 
             # Select best and worst solutions and compute average cost
             if iterations_solutions_sorted_and_restricted:
-                iteration_best_solution = iterations_solutions_sorted_and_restricted[0]
+                iteration_best_solution = \
+                    iterations_solutions_sorted_and_restricted[0]
             else:
                 iteration_best_solution = iterations_solutions_sorted[0]
             iteration_worst_solution = iterations_solutions_sorted[-1]
