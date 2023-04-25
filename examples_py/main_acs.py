@@ -9,7 +9,7 @@ from src.new.metaheuristics import GeneralVNS
 from src.new.models import VRPModel
 from src.readers import ReaderCVRPLIB
 
-# EXECUTE RUNNING THIS COMMAND: python examples_py/main_acs.py
+# RUN THIS SCRIPT BY THIS COMMAND: python examples_py/main_acs.py
 
 ALPHA = 1  # 0.75, 1, 1.05, 1.1, 1.25, 1.5, 1.75, 2
 ANTS_NUM_RELATION = 2  # 1, 2
@@ -18,11 +18,11 @@ CANDIDATE_NODES_TYPE = 'best'  # None, 'best', 'random'
 GAMMA = 2  # 1, 1.5 2
 # ['distance'], ['saving'], ['distance', 'saving']
 HEURISTICS_TO_USE = ['distance', 'saving']
-INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
+INSTANCE = 'instances/CVRPLIB/Golden/Golden_20'
 ITERATION_LOCAL_SEARCH_MODEL = GeneralVNS  # None, GeneralVNS
 MAX_ITERATIONS = 500
 MIN_ITERATIONS = 200
-P = 0.1  # 0.05, 0.1, 0.15, 0.2, 0.25, 0.3
+P = 0.15  # 0.05, 0.1, 0.15, 0.2, 0.25, 0.3
 PHEROMONES_LOCAL_UPDATE = True
 PROBABILITIES_MATRIX_TYPE = 'classic'  # 'classic', 'normalized'
 Q_0 = 0.8

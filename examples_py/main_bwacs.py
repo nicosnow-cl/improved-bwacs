@@ -9,7 +9,7 @@ from src.new.metaheuristics import GeneralVNS
 from src.new.models import VRPModel
 from src.readers import ReaderCVRPLIB
 
-# EXECUTE RUNNING THIS COMMAND: python examples_py/main_bwacs.py
+# RUN THIS SCRIPT BY THIS COMMAND: python examples_py/main_bwacs.py
 
 ALPHA = 1  # 0.75, 1, 1.05, 1.1, 1.25, 1.5, 1.75, 2
 ANTS_NUM_RELATION = 2  # 1, 2
@@ -19,7 +19,7 @@ DELTA = 2  # 1, 2, 3, 4
 GAMMA = 2  # 1, 1.5 2
 # ['distance'], ['saving'], ['distance', 'saving']
 HEURISTICS_TO_USE = ['distance', 'saving']
-INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
+INSTANCE = 'instances/CVRPLIB/Golden/Golden_20'
 ITERATION_LOCAL_SEARCH_MODEL = GeneralVNS  # None, GeneralVNS
 MAX_ITERATIONS = 500
 MIN_ITERATIONS = 200
@@ -28,7 +28,7 @@ P_M = 0.2
 PHEROMONES_LOCAL_UPDATE = True
 PROBABILITIES_MATRIX_TYPE = 'classic'  # 'classic', 'normalized'
 Q_0 = 0.8
-SIMILARITY_OF_ARCS_TO_DO_RESTART = 0.75  # 0.60, 0.70, 0.75, 0.80
+SIMILARITY_OF_ARCS_TO_DO_RESTART = 0.7  # 0.60, 0.70, 0.75, 0.80
 # 0.885, 0.89, 0.9, 0.92, 0.95, 0.99
 SIMILARITY_OF_QUALITIES_TO_DO_RESTART = None
 TARE_PERCENTAGE = 0.15
