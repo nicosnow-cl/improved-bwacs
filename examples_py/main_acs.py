@@ -13,8 +13,11 @@ from src.readers import ReaderCVRPLIB
 
 ALPHA = 1  # 0.75, 1, 1.05, 1.1, 1.25, 1.5, 1.75, 2
 ANTS_NUM_RELATION = 2  # 1, 2
-BETA = 2  # 2, 2.5, 3,  3.5
-GAMMA = 1  # 1, 1.5 2
+BETA = 3  # 2, 2.5, 3,  3.5
+CANDIDATE_NODES_TYPE = 'best'  # None, 'best', 'random'
+GAMMA = 2  # 1, 1.5 2
+# ['distance'], ['saving'], ['distance', 'saving']
+HEURISTICS_TO_USE = ['distance', 'saving']
 INSTANCE = 'instances/CVRPLIB/CMT/CMT1'
 ITERATION_LOCAL_SEARCH_MODEL = GeneralVNS  # None, GeneralVNS
 MAX_ITERATIONS = 500
@@ -25,7 +28,6 @@ PROBABILITIES_MATRIX_TYPE = 'classic'  # 'classic', 'normalized'
 Q_0 = 0.8
 TARE_PERCENTAGE = 0.15
 THREAD = False
-CANDIDATE_NODES_TYPE = 'best'  # None, 'best', 'random'
 
 reader = ReaderCVRPLIB(INSTANCE)
 depot, clients, loc_x, loc_y, demands, _, max_capacity, k_optimal, _ = \
@@ -54,7 +56,7 @@ parameters_heuristics = {
 }
 
 heuristics = HeuristicModel(**parameters_heuristics)
-matrix_heuristics = heuristics.get_heuristic_matrix(['distance', 'saving'])
+matrix_heuristics = heuristics.get_heuristic_matrix(HEURISTICS_TO_USE)
 
 parameters_ants = {
     'alpha': ALPHA,
@@ -68,14 +70,14 @@ parameters_ants = {
     'max_capacity': max_capacity,
     'max_iterations': min(iterations, MAX_ITERATIONS),
     'model_ant': FreeAnt,
-    # 'model_ls_it': ITERATION_LOCAL_SEARCH_MODEL,
+    'model_ls_it': ITERATION_LOCAL_SEARCH_MODEL,
     'model_problem': VRPModel,
     'nodes': nodes,
     'p': P,
-    # 'pheromones_local_update': PHEROMONES_LOCAL_UPDATE,
+    'pheromones_local_update': PHEROMONES_LOCAL_UPDATE,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
-    # 'type_candidate_nodes': CANDIDATE_NODES_TYPE,
+    'type_candidate_nodes': CANDIDATE_NODES_TYPE,
 }
 
 acs = ACS(**parameters_ants)
