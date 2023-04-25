@@ -9,7 +9,7 @@ from src.new.metaheuristics import GeneralVNS
 from src.new.models import VRPModel
 from src.readers import ReaderCVRPLIB
 
-# RUN THIS SCRIPT BY THIS COMMAND: python examples_py/main_acs.py
+# RUN THIS SCRIPT BY NEXT COMMAND: python examples_py/main_acs.py
 
 ALPHA = 1  # 0.75, 1, 1.05, 1.1, 1.25, 1.5, 1.75, 2
 ANTS_NUM_RELATION = 2  # 1, 2

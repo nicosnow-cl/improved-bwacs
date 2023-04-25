@@ -9,7 +9,7 @@ from src.new.metaheuristics import GeneralVNS
 from src.new.models import VRPModel
 from src.readers import ReaderCVRPLIB
 
-# RUN THIS SCRIPT BY THIS COMMAND: python examples_py/main_bwacs.py
+# RUN THIS SCRIPT BY NEXT COMMAND: python examples_py/main_bwacs.py
 
 ALPHA = 1  # 0.75, 1, 1.05, 1.1, 1.25, 1.5, 1.75, 2
 ANTS_NUM_RELATION = 2  # 1, 2
@@ -23,7 +23,7 @@ INSTANCE = 'instances/CVRPLIB/Golden/Golden_1'
 ITERATION_LOCAL_SEARCH_MODEL = GeneralVNS  # None, GeneralVNS
 MAX_ITERATIONS = 500
 MIN_ITERATIONS = 200
-P = 0.15  # 0.05, 0.1, 0.15, 0.2, 0.25, 0.3
+P = 0.3  # 0.05, 0.1, 0.15, 0.2, 0.25, 0.3
 P_M = 0.2
 PHEROMONES_LOCAL_UPDATE = True
 PROBABILITIES_MATRIX_TYPE = 'classic'  # 'classic', 'normalized'
@@ -76,7 +76,7 @@ parameters_ants = {
     'max_capacity': max_capacity,
     'max_iterations': min(iterations, MAX_ITERATIONS),
     'model_ant': FreeAnt,
-    'model_ls_it': ITERATION_LOCAL_SEARCH_MODEL,
+    # 'model_ls_it': ITERATION_LOCAL_SEARCH_MODEL,
     'model_problem': VRPModel,
     'nodes': nodes,
     'p_m': P_M,

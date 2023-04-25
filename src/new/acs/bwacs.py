@@ -328,8 +328,7 @@ class BWACS(ACS):
                     iterations_solutions.append(solution)
 
                     # Local pheromone update
-                    if self.pheromones_local_update and \
-                            len(solution[0]) == self.k_optimal:
+                    if self.pheromones_local_update:
                         local_factor = self.p / len(self.nodes)
 
                         # Update pheromones matrix with local update
