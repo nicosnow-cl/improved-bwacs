@@ -5,7 +5,8 @@ import numpy as np
 import time
 import random
 
-from ..helpers import same_line_print, get_flattened_list, get_inversed_matrix
+from ..helpers import same_line_print, get_flattened_list, \
+    get_inversed_matrix, get_element_ranking
 from ..models import ProblemModel
 
 
@@ -57,15 +58,18 @@ class ACS:
 
     def print_intance_parameters(self):
         print('\nPARAMETERS:')
-        print('\tk_optimal:', self.k_optimal)
-        print('\tants_num:', self.ants_num)
-        print('\tmax_iterations:', self.max_iterations)
-        print('\tmax_capacity:', self.max_capacity)
-        print('\ttare:', self.tare)
         print('\talpha:', self.alpha)
+        print('\tants_num:', self.ants_num)
         print('\tbeta:', self.beta)
+        print('\tk_optimal:', self.k_optimal)
+        print('\tmax_capacity:', self.max_capacity)
+        print('\tmax_iterations:', self.max_iterations)
         print('\tp:', self.p)
         print('\tq0:', self.q0)
+        print('\ttare:', self.tare)
+        print('\ttype_candidate_nodes:', self.type_candidate_nodes)
+        print('\ttype_probabilities_matrix:', self.type_probabilities_matrix)
+        print('\n')
 
     def create_pheromones_matrix(self,
                                  t_delta: float = 0.5,
@@ -239,7 +243,7 @@ class ACS:
             for i, j in arcs_lst:
                 self.matrix_pheromones[i][j] += pheromones_amount
 
-    def set_bounds_to_pheromones_matrix(self) -> None:
+    def set_bounds_to_pheromones_matrix(self, max=1) -> None:
         """
         Sets the minimum and maximum values for the pheromone trail levels,
         based on the values of t_min and t_max.
@@ -250,10 +254,9 @@ class ACS:
         Returns:
             None.
         """
-        MAX = 1
 
-        np.clip(self.matrix_pheromones, self.t_min, MAX,
-                out=self.matrix_pheromones)
+        np.clip(self.matrix_pheromones, self.t_min,
+                max, out=self.matrix_pheromones)
 
     def get_normalized_matrix(self, matrix: np.ndarray) -> np.ndarray:
         mask = (matrix != 0) & np.isfinite(matrix)
@@ -314,7 +317,7 @@ class ACS:
 
             clientes_sorted_by_distance = sorted(
                 all_clients, key=lambda x: self.matrix_costs[x][0])
-            closest_nodes = set(clientes_sorted_by_distance[:self.k_optimal])
+            closest_nodes = set(clientes_sorted_by_distance[:self.k_optimal*2])
 
             top_ten_solutions = sorted(solutions, key=lambda d: d[1])[:10]
 
@@ -330,17 +333,14 @@ class ACS:
                     best_starting_nodes.add(start_node)
                     # best_starting_nodes.add(end_node)
 
-            def get_node_ranking(node):
-                if node == 0:
-                    return 0
-                elif node in best_starting_nodes:
-                    return 2.5
-                elif node in closest_nodes:
-                    return 1.75
+            random_nodes = set(random.sample(all_clients, self.k_optimal))
 
-                return 1
-
-            weights = [get_node_ranking(node) for node in self.nodes]
+            weights = [get_element_ranking(
+                node,
+                1,
+                [best_starting_nodes, closest_nodes, random_nodes],
+                True)
+                for node in self.nodes]
             return weights
 
     def run(self):

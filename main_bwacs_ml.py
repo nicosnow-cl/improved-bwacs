@@ -13,7 +13,7 @@ from src.readers import ReaderCVRPLIB
 from src.new.heuristics import HeuristicModel
 
 
-ALPHA = 1.1  # 0.75, 1, 1.05, 1.1, 1.25, 1.5, 1.75, 2
+ALPHA = 1  # 0.75, 1, 1.05, 1.1, 1.25, 1.5, 1.75, 2
 BETA = 3  # 2, 2.5, 3,  3.5
 GAMMA = 2  # 1, 1.5 2
 DELTA = 2  # 1, 2, 3, 4
