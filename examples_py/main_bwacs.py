@@ -19,7 +19,7 @@ DELTA = 2  # 1, 2, 3, 4
 GAMMA = 2  # 1, 1.5 2
 # ['distance'], ['saving'], ['distance', 'saving']
 HEURISTICS_TO_USE = ['distance', 'saving']
-INSTANCE = 'instances/CVRPLIB/Golden/Golden_1'
+INSTANCE = 'instances/CVRPLIB/Golden/Golden_20'
 ITERATION_LOCAL_SEARCH_MODEL = GeneralVNS  # None, GeneralVNS
 MAX_ITERATIONS = 500
 MIN_ITERATIONS = 200
@@ -76,7 +76,7 @@ parameters_ants = {
     'max_capacity': max_capacity,
     'max_iterations': min(iterations, MAX_ITERATIONS),
     'model_ant': FreeAnt,
-    # 'model_ls_it': ITERATION_LOCAL_SEARCH_MODEL,
+    'model_ls_it': ITERATION_LOCAL_SEARCH_MODEL,
     'model_problem': VRPModel,
     'nodes': nodes,
     'p_m': P_M,
