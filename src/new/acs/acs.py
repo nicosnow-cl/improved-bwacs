@@ -424,8 +424,7 @@ class ACS:
 
                 # Generate solutions for each ant and update pheromones matrix
                 for _ in range(self.ants_num):
-                    solution = ant.generate_solution(
-                        candidate_nodes_weights)
+                    solution = ant.generate_solution(candidate_nodes_weights)
                     iterations_solutions.append(solution)
 
                     # Local pheromone update
@@ -524,9 +523,13 @@ class ACS:
                     if len(outputs_to_print) == max_outputs_to_print:
                         outputs_to_print.pop(0)
 
+                    iteration_output = ['Iteration {}/{}:'.format(
+                        i + 1, self.max_iterations
+                    )] + iteration_output
                     outputs_to_print.append(iteration_output)
                     same_line_print(outputs_to_print)
 
+        # Ending the algorithm run
         final_time = time.time()
         time_elapsed = final_time - start_time
 
@@ -552,3 +555,5 @@ class ACS:
         # print(f'Pheromones min: {self.matrix_pheromones.min()}')
         # print(f'Pheromones max: {self.matrix_pheromones.max()}')
         # print(sorted(np.unique(self.matrix_pheromones)))
+
+        return global_best_solution, best_solutions_set
