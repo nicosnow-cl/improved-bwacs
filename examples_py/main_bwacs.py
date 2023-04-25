@@ -19,7 +19,7 @@ DELTA = 2  # 1, 2, 3, 4
 GAMMA = 2  # 1, 1.5 2
 # ['distance'], ['saving'], ['distance', 'saving']
 HEURISTICS_TO_USE = ['distance', 'saving']
-INSTANCE = 'instances/CVRPLIB/Golden/Golden_20'
+INSTANCE = 'instances/CVRPLIB/Golden/Golden_1'
 ITERATION_LOCAL_SEARCH_MODEL = GeneralVNS  # None, GeneralVNS
 MAX_ITERATIONS = 500
 MIN_ITERATIONS = 200
@@ -86,7 +86,7 @@ parameters_ants = {
     'pheromones_local_update': PHEROMONES_LOCAL_UPDATE,
     'q0': Q_0,
     'tare': max_capacity * TARE_PERCENTAGE,
-    'type_candidate_nodes': CANDIDATE_NODES_TYPE,
+    # 'type_candidate_nodes': CANDIDATE_NODES_TYPE,
 }
 
 acs = BWACS(**parameters_ants)

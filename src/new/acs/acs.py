@@ -1,4 +1,4 @@
-from math import exp, log
+from math import exp, log, ceil
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 from typing import Any, List, Tuple
@@ -315,17 +315,27 @@ class ACS:
             return [random.random() for _ in range(0, len(self.nodes))]
         else:
             all_clients = self.nodes[1:][:]
+            half_clients_len = ceil(len(all_clients) / 2)
+            max_candidates_set = ceil(half_clients_len / 2)
 
             clientes_sorted_by_distance = sorted(
                 all_clients, key=lambda x: self.matrix_costs[x][0])
-            closest_nodes = set(clientes_sorted_by_distance[:self.k_optimal*2])
+            closest_nodes = set(
+                clientes_sorted_by_distance[:max_candidates_set])
 
-            top_ten_solutions = sorted(solutions, key=lambda d: d[1])[:10]
+            step = ceil(self.k_optimal / 2)
+            distributed_solutions = []
+            if len(solutions) <= self.k_optimal * step:
+                distributed_solutions = sorted(solutions, key=lambda d: d[1])[
+                    :self.k_optimal]
+            else:
+                distributed_solutions = sorted(solutions, key=lambda d: d[1])[
+                    ::step][:self.k_optimal]
 
             best_starting_nodes = set()
-            for solution in top_ten_solutions:
-                if len(best_starting_nodes) >= self.k_optimal:
-                    break
+            for solution in distributed_solutions:
+                # if len(best_starting_nodes) >= self.k_optimal:
+                #     break
 
                 for route in solution[0]:
                     start_node = route[1]
@@ -334,7 +344,7 @@ class ACS:
                     best_starting_nodes.add(start_node)
                     # best_starting_nodes.add(end_node)
 
-            random_nodes = set(random.sample(all_clients, self.k_optimal))
+            random_nodes = set(random.sample(all_clients, max_candidates_set))
 
             weights = [get_element_ranking(
                 node,
