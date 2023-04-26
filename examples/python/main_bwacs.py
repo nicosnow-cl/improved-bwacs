@@ -11,7 +11,7 @@ from src.readers import ReaderCVRPLIB
 
 # RUN THIS SCRIPT BY NEXT COMMAND: python examples_py/main_bwacs.py
 
-ALPHA = 1  # 0.75, 1, 1.05, 1.1, 1.25, 1.5, 1.75, 2
+ALPHA = 1.05  # 0.75, 1, 1.05, 1.1, 1.25, 1.5, 1.75, 2
 ANTS_NUM_RELATION = 2  # 1, 2
 BETA = 3  # 2, 2.5, 3,  3.5
 CANDIDATE_NODES_TYPE = 'best'  # None, 'best', 'random'

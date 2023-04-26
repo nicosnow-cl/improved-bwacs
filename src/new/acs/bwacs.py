@@ -393,7 +393,8 @@ class BWACS(ACS):
                 # Evaporate pheromones and update pheromone matrix by BWACS
                 self.evaporate_pheromones_matrix()
                 self.update_pheromones_matrix(global_best_solution[2],
-                                              global_best_solution[1])
+                                              global_best_solution[1],
+                                              self.ants_num)
                 self.penalize_pheromones_matrix(global_best_solution[2],
                                                 iteration_worst_solution[2])
 
@@ -515,4 +516,4 @@ class BWACS(ACS):
         # print(f'Pheromones max: {self.matrix_pheromones.max()}')
         # print(sorted(np.unique(self.matrix_pheromones)))
 
-        return global_best_solution, best_solutions_set
+        return global_best_solution, best_solutions

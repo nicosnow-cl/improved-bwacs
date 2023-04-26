@@ -566,4 +566,4 @@ class ACS:
         # print(f'Pheromones max: {self.matrix_pheromones.max()}')
         # print(sorted(np.unique(self.matrix_pheromones)))
 
-        return global_best_solution, best_solutions_set
+        return global_best_solution, best_solutions

@@ -12,6 +12,7 @@ class ReaderCVRPLIB:
     def read(self):
         if self.file_name:
             self.path = self.os.getcwd() + '/' + self.path + '/'
+
             try:
                 with open(self.path + self.file_name + '.vrp', 'r') as f:
                     del_index = []
