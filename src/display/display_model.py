@@ -1,4 +1,9 @@
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import numpy as np
+from matplotlib.gridspec import GridSpec
+
+from src.new.helpers import get_route_arcs
 
 
 class DisplayModel():
@@ -7,29 +12,36 @@ class DisplayModel():
                        demands,
                        matrix_coords,
                        name='',
-                       output_file=None):
-        plt.rc('font', size=16)
-        plt.rc('figure', titlesize=18)
-        plt.figure(figsize=(12, 12))
-        # plt.scatter(matrix_coords[:, 0], matrix_coords[:, 1], s=10)
+                       output_file=None,
+                       figsize=(14, 6)):
+        plt.figure(figsize=figsize)
 
         depot_x = matrix_coords[0][0]
         depot_y = matrix_coords[0][1]
         clients = nodes[1:]
 
+        plt.subplot(1, 2, 1)
+        plt.title(f'Demands ({name})')
+
+        plt.bar(nodes, demands, color='g')
+
+        plt.subplot(1, 2, 2)
+        plt.title(f'Coordinates ({name})')
+
         for node in clients:
             x = matrix_coords[node][0]
             y = matrix_coords[node][1]
+            desc_x = x + (x * 0.01)
+            desc_y = y - (y * 0.03)
 
-            plt.plot(x * 0.2, y * 0.2, c='g', marker='o', markersize=17)
+            plt.plot(x, y, c='g', marker='o')
             plt.annotate('$q_{%d}=%d$' %
-                         (node, demands[node]), (x * 0.2, (y - 3) * 0.2))
+                         (node, demands[node]), (desc_x, desc_y))
 
-        plt.plot(depot_x * 0.2, depot_y * 0.2,
-                 c='r', marker='s', markersize=17)
-        plt.annotate('DEPOT', ((depot_x - 1.5) * 0.2, (depot_y - 3) * 0.2))
-
-        plt.title(f'Problem {name}')
+        plt.plot(depot_x, depot_y, c='r', marker='s')
+        plt.annotate('DEPOT', (depot_x + (depot_x * 0.01),
+                     depot_y - (depot_y * 0.03)))
+        plt.grid()
 
         if output_file:
             plt.savefig(output_file)
@@ -37,18 +49,101 @@ class DisplayModel():
         plt.show()
 
     @staticmethod
-    def render_solutions_descend(solutions, name, output_file=None):
-        plt.rc('font', size=16)
-        plt.rc('figure', titlesize=18)
-        plt.figure(figsize=(12, 12))
+    def render_solution(solution,
+                        matrix_coords,
+                        name,
+                        solutions=None,
+                        avg_costs=None,
+                        median_costs=None,
+                        output_file=None,
+                        base_figsize=(10, 10)):
+        rows = 1
+        cols = 1
+        index = 1
+        figsize = [base_figsize[0], base_figsize[1]]
+        if solutions is not None or avg_costs is not None or \
+                median_costs is not None:
+            cols += 1
 
-        solutions_reverse = solutions
-        iterations = [it + 1 for it in range(len(solutions))]
-        costs = [sol[1] for sol in solutions_reverse]
+        if solutions is not None:
+            rows += 1
 
-        plt.plot(iterations, costs, linewidth=2.0)
+        if avg_costs is not None:
+            rows += 1
 
-        plt.title(f'Costs VS Iterations ({name})')
+        if median_costs is not None:
+            rows += 1
+
+        figsize[1] = figsize[1] * rows
+        figsize[0] = figsize[0] * cols
+
+        plt.figure(figsize=figsize)
+
+        plt.subplot(rows, cols, index)
+        plt.title(f'Solution ({name})')
+
+        k = len(solution[0])
+        color_palette = cm.jet(np.linspace(0, 1, k + 1))
+
+        depot_x = matrix_coords[0][0]
+        depot_y = matrix_coords[0][1]
+        plt.plot(depot_x, depot_y, c='r', marker='s')
+
+        for idx, route in enumerate(solution[0]):
+            for node in route:
+                if node == 0:
+                    continue
+
+                x = matrix_coords[node][0]
+                y = matrix_coords[node][1]
+
+                plt.plot(x, y, c='c', marker='o', alpha=0.3)
+                # plt.annotate('$q_{%d}=%d$' % (i, self.demands_array[i]), (
+                #     matrix_coords[i][0] * 0.2, (matrix_coords[i][1]-3) * 0.2))
+
+            route_arcs = get_route_arcs(route)
+            for i, j in route_arcs:
+                i_x = matrix_coords[i][0]
+                i_y = matrix_coords[i][1]
+                j_x = matrix_coords[j][0]
+                j_y = matrix_coords[j][1]
+
+                plt.plot(
+                    (i_x, j_x), (i_y, j_y), c=color_palette[idx])
+        plt.grid()
+
+        if solutions is not None:
+            index += 1
+            plt.subplot(rows, cols, index)
+            plt.title(f'Best Costs ({name})')
+
+            iterations = [it + 1 for it in range(len(solutions))]
+            solutions_reverse = solutions
+            costs = [sol[1] for sol in solutions_reverse]
+
+            plt.plot(iterations, costs, c='b', linewidth=2.0)
+
+        if avg_costs is not None:
+            index += 1
+            plt.subplot(rows, cols, index)
+            plt.title(f'Average Costs ({name})')
+
+            iterations = [it + 1 for it in range(len(solutions))]
+            solutions_reverse = solutions
+            costs = [cost for cost in avg_costs]
+
+            plt.plot(iterations, costs, c='g', linewidth=2.0)
+
+        if median_costs is not None:
+            index += 1
+            plt.subplot(rows, cols, index)
+            plt.title(f'Median Costs ({name})')
+
+            iterations = [it + 1 for it in range(len(solutions))]
+            solutions_reverse = solutions
+            costs = [cost for cost in median_costs]
+
+            plt.plot(iterations, costs, c='y', linewidth=2.0)
 
         if output_file:
             plt.savefig(output_file)

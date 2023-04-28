@@ -73,15 +73,13 @@ class BWACS(ACS):
         mutation_intensity = self.get_mutation_intensity(current_iteration,
                                                          restart_iteration)
         t_threshold = self.get_t_threshold(solution_arcs)
+        mutation_value = (mutation_intensity * t_threshold) * 0.0005
 
         for i in range(self.matrix_pheromones.shape[0]):
-            for j in range(i + 1, self.matrix_pheromones.shape[0]):
-                if np.random.rand() < self.p_m:
-                    mutation_value = (
-                        self.p * mutation_intensity * t_threshold) * 0.00025
-                    mutation_value *= np.random.choice([-1, 1])
+            if np.random.rand() < self.p_m:
+                mutation_value *= np.random.choice([-1, 1])
 
-                    self.matrix_pheromones[i][j] += mutation_value
+                self.matrix_pheromones[i] += mutation_value
 
     def mutaute_pheromones_matrix_by_arcs(self,
                                           solution_arcs,
@@ -92,7 +90,7 @@ class BWACS(ACS):
         t_threshold = self.get_t_threshold(solution_arcs)
 
         mutation_value = (self.p * mutation_intensity * t_threshold) \
-            * 0.01
+            * 0.00025
 
         # Use triu_indices to get upper triangle indices
         iu = np.triu_indices(self.matrix_pheromones.shape[0], k=1)
@@ -303,6 +301,8 @@ class BWACS(ACS):
 
         best_prev_quality = np.inf
         best_solutions = []
+        avg_costs = []
+        median_costs = []
         candidate_nodes_weights = []
         global_best_solution = (None, np.inf, None, None, None)
         max_outputs_to_print = 10
@@ -380,7 +380,7 @@ class BWACS(ACS):
                 ls_it_solution = (None, np.inf, None, None, None)
                 if ls_it:
                     ls_it_solution = ls_it.improve(
-                        iteration_best_solution[0], i)
+                        iteration_best_solution[0][:], i)
                     iteration_output[0] += ', LS({})'.format(ls_it_solution[1])
 
                 # Update global best solution if LS best solution is better
@@ -393,8 +393,7 @@ class BWACS(ACS):
                 # Evaporate pheromones and update pheromone matrix by BWACS
                 self.evaporate_pheromones_matrix()
                 self.update_pheromones_matrix(global_best_solution[2],
-                                              global_best_solution[1],
-                                              self.ants_num)
+                                              global_best_solution[1])
                 self.penalize_pheromones_matrix(global_best_solution[2],
                                                 iteration_worst_solution[2])
 
@@ -418,8 +417,7 @@ class BWACS(ACS):
                         self.matrix_pheromones = self.create_pheromones_matrix(
                             self.t_delta,
                             self.t_min,
-                            self.t_max,
-                            best_solutions)
+                            self.t_max)
                         restarts.append(i)
                 elif self.percent_quality_limit:
                     restarts_avg_steps = self.get_avg_steps_between_restarts(
@@ -444,14 +442,15 @@ class BWACS(ACS):
                         restarts.append(i)
 
                 # Mutate pheromones matrix
-                if self.type_mutation == 'arcs':
-                    self.mutaute_pheromones_matrix_by_arcs(
-                        global_best_solution[2],
-                        i, restarts[-1])
-                elif self.type_mutation == 'row':
-                    self.mutate_pheromones_matrix_by_row(
-                        global_best_solution[2],
-                        i, restarts[-1])
+                if len(restarts):
+                    if self.type_mutation == 'arcs':
+                        self.mutaute_pheromones_matrix_by_arcs(
+                            global_best_solution[2],
+                            i, restarts[-1])
+                    elif self.type_mutation == 'rows':
+                        self.mutate_pheromones_matrix_by_row(
+                            global_best_solution[2],
+                            i, restarts[-1])
 
                 self.set_bounds_to_pheromones_matrix()
 
@@ -462,6 +461,8 @@ class BWACS(ACS):
 
                 # Append iteration best solution to list of best solutions
                 best_solutions.append(iteration_best_solution)
+                avg_costs.append(avg_iteration_costs)
+                median_costs.append(median_iteration_costs)
 
                 # Update best_prev_quality, best_median
                 best_prev_quality = iteration_best_solution[1]
@@ -473,18 +474,18 @@ class BWACS(ACS):
                         best_solutions, self.type_candidate_nodes)
 
                 # Print iteration output
-                if self.ipynb:
-                    for line in iteration_output:
-                        print(line)
-                else:
-                    if len(outputs_to_print) == max_outputs_to_print:
-                        outputs_to_print.pop(0)
+                # if self.ipynb:
+                #     for line in iteration_output:
+                #         print(line)
+                # else:
+                #     if len(outputs_to_print) == max_outputs_to_print:
+                #         outputs_to_print.pop(0)
 
-                    iteration_output = ['Iteration {}/{}:'.format(
-                        i + 1, self.max_iterations
-                    )] + iteration_output
-                    outputs_to_print.append(iteration_output)
-                    same_line_print(outputs_to_print)
+                #     iteration_output = ['Iteration {}/{}:'.format(
+                #         i + 1, self.max_iterations
+                #     )] + iteration_output
+                #     outputs_to_print.append(iteration_output)
+                #     same_line_print(outputs_to_print)
 
         # Ending the algorithm run
         final_time = time.time()
@@ -516,4 +517,4 @@ class BWACS(ACS):
         # print(f'Pheromones max: {self.matrix_pheromones.max()}')
         # print(sorted(np.unique(self.matrix_pheromones)))
 
-        return global_best_solution, best_solutions
+        return global_best_solution, best_solutions, avg_costs, median_costs
