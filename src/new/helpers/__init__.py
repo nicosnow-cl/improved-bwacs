@@ -13,3 +13,5 @@ from .get_route_load import get_route_load
 from .get_saving_matrix import get_saving_matrix, get_saving_matrix_2015
 from .remove_element_from_list import remove_element_from_list
 from .same_line_print import same_line_print
+from .create_directory import create_directory
+from .download_instance import download_instance
