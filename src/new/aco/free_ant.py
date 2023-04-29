@@ -14,8 +14,8 @@ class FreeAnt:
                  matrix_costs,
                  max_capacity,
                  tare,
-                 q0,
-                 problem_model):
+                 problem_model,
+                 q0: float = None):
         self.lst_demands = lst_demands
         self.matrix_probabilities = matrix_probabilities
         self.matrix_costs = matrix_costs
@@ -47,6 +47,13 @@ class FreeAnt:
     def choose_next_node(self, actual_node, valid_nodes):
         probabilities_of_nodes = \
             self.matrix_probabilities[actual_node][valid_nodes]
+
+        if self.q0 is None:
+            cum_weights = probabilities_of_nodes.cumsum()
+            cum_weights /= cum_weights[-1]
+
+            return valid_nodes[np.searchsorted(cum_weights,
+                                               np.random.rand())]
 
         q = np.random.rand()
 

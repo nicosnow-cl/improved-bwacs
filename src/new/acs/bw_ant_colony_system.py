@@ -4,7 +4,7 @@ import numpy as np
 import time
 
 from ..helpers import get_flattened_list, same_line_print
-from .acs import ACS
+from .ant_colony_system import ACS
 
 
 class BWACS(ACS):
@@ -73,7 +73,7 @@ class BWACS(ACS):
         mutation_intensity = self.get_mutation_intensity(current_iteration,
                                                          restart_iteration)
         t_threshold = self.get_t_threshold(solution_arcs)
-        mutation_value = (mutation_intensity * t_threshold) * 0.0005
+        mutation_value = (mutation_intensity * t_threshold) * 0.0001
 
         for i in range(self.matrix_pheromones.shape[0]):
             if np.random.rand() < self.p_m:
@@ -90,7 +90,7 @@ class BWACS(ACS):
         t_threshold = self.get_t_threshold(solution_arcs)
 
         mutation_value = (self.p * mutation_intensity * t_threshold) \
-            * 0.00025
+            * 0.0001
 
         # Use triu_indices to get upper triangle indices
         iu = np.triu_indices(self.matrix_pheromones.shape[0], k=1)
@@ -452,7 +452,7 @@ class BWACS(ACS):
                             global_best_solution[2],
                             i, restarts[-1])
 
-                self.set_bounds_to_pheromones_matrix()
+                self.set_bounds_to_pheromones_matrix(self.t_max)
 
                 # Update probabilities matrix
                 self.matrix_probabilities = self.get_probabilities_matrix(

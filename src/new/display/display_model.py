@@ -56,30 +56,15 @@ class DisplayModel():
                         avg_costs=None,
                         median_costs=None,
                         output_file=None,
-                        base_figsize=(10, 10)):
-        rows = 1
-        cols = 1
-        index = 1
-        figsize = [base_figsize[0], base_figsize[1]]
+                        base_figsize=(14, 6)):
+        figsize = list(base_figsize)
         if solutions is not None or avg_costs is not None or \
                 median_costs is not None:
-            cols += 1
-
-        if solutions is not None:
-            rows += 1
-
-        if avg_costs is not None:
-            rows += 1
-
-        if median_costs is not None:
-            rows += 1
-
-        figsize[1] = figsize[1] * rows
-        figsize[0] = figsize[0] * cols
+            figsize = [14, 6]
 
         plt.figure(figsize=figsize)
 
-        plt.subplot(rows, cols, index)
+        plt.subplot(1, 2, 1)
         plt.title(f'Solution ({name})')
 
         k = len(solution[0])
@@ -113,37 +98,39 @@ class DisplayModel():
         plt.grid()
 
         if solutions is not None:
-            index += 1
-            plt.subplot(rows, cols, index)
-            plt.title(f'Best Costs ({name})')
+            plt.subplot(1, 2, 2)
 
             iterations = [it + 1 for it in range(len(solutions))]
             solutions_reverse = solutions
             costs = [sol[1] for sol in solutions_reverse]
 
-            plt.plot(iterations, costs, c='b', linewidth=2.0)
+            plt.plot(iterations, costs, c='b',
+                     linewidth=2.0, label='It. Best Cost')
 
         if avg_costs is not None:
-            index += 1
-            plt.subplot(rows, cols, index)
-            plt.title(f'Average Costs ({name})')
+            plt.subplot(1, 2, 2)
 
             iterations = [it + 1 for it in range(len(solutions))]
             solutions_reverse = solutions
             costs = [cost for cost in avg_costs]
 
-            plt.plot(iterations, costs, c='g', linewidth=2.0)
+            plt.plot(iterations, costs, c='g',
+                     linewidth=2.0, label='It. Avg Cost')
 
         if median_costs is not None:
-            index += 1
-            plt.subplot(rows, cols, index)
-            plt.title(f'Median Costs ({name})')
+            plt.subplot(1, 2, 2)
 
             iterations = [it + 1 for it in range(len(solutions))]
             solutions_reverse = solutions
             costs = [cost for cost in median_costs]
 
-            plt.plot(iterations, costs, c='y', linewidth=2.0)
+            plt.plot(iterations, costs, c='y',
+                     linewidth=2.0, label='It. Median Cost')
+
+        if solutions is not None or avg_costs is not None or \
+                median_costs is not None:
+            plt.title(f'Costs ({name})')
+            plt.legend(loc='upper right')
 
         if output_file:
             plt.savefig(output_file)

@@ -462,6 +462,7 @@ class ACS:
                     if len(solution[0]) == self.k_optimal]
 
                 # Select best and worst solutions and compute relative costs
+                iteration_best_solution = (None, np.inf, None, None, None)
                 if iterations_solutions_sorted_and_restricted:
                     iteration_best_solution = \
                         iterations_solutions_sorted_and_restricted[0]
