@@ -29,7 +29,8 @@ class MMAS(ACS):
 
     def get_mmas_t_max_and_t_min(self,
                                  p_best: float,
-                                 best_solution_quality: float) -> Tuple[float, float]:
+                                 best_solution_quality: float) \
+            -> Tuple[float, float]:
         n = len(self.nodes)
         avg = n / 2
         p_best_n_root = exp(log(p_best) / n)
@@ -57,7 +58,7 @@ class MMAS(ACS):
             it_worst_solution_arcs (List[tuple]): The arcs of the current worst
             solution.
             similarity_percentage (float): The percentage of similarity between
-            the current best and worst solutions to be considered as 
+            the current best and worst solutions to be considered as
             stagnation.
 
         Returns:
@@ -159,9 +160,6 @@ class MMAS(ACS):
             best-iterations solutions and statistics data to the problem.
         '''
 
-        self.print_intance_parameters()
-        print('\n')
-
         errors = self.model_problem.validate_instance(
             self.nodes, self.demands, self.max_capacity)
         if errors:
@@ -233,6 +231,9 @@ class MMAS(ACS):
                                      self.max_iterations,
                                      self.model_problem)
 
+        self.print_intance_parameters()
+        print('\n')
+
         # Solve parameters
         best_prev_quality = np.inf
         best_solutions = []
@@ -244,7 +245,6 @@ class MMAS(ACS):
         iterations_stagnations = []
         iterations_std_costs = []
         iterations_times = []
-        max_outputs_to_print = 10
         outputs_to_print = []
         prev_median = np.inf
         start_time = time.time()
@@ -252,7 +252,7 @@ class MMAS(ACS):
         # Loop over max_iterations
         with tqdm(total=self.max_iterations) as pbar:
             for it in range(self.max_iterations):
-                pbar.set_description('Global Best: {}'
+                pbar.set_description('Global Best -> {}'
                                      .format('{:.5f}'.format(
                                          global_best_solution['cost'])
                                      ))
@@ -279,8 +279,9 @@ class MMAS(ACS):
                                 self.matrix_pheromones,
                                 1 - self.epsilon)
 
-                        self.apply_bounds_to_pheromones_matrix(
-                            self.t_min, self.t_max)
+                        self.matrix_pheromones = \
+                            self.apply_bounds_to_pheromones_matrix(
+                                self.t_min, self.t_max)
 
                         # Update probabilities matrix
                         self.matrix_probabilities = \
@@ -362,7 +363,8 @@ class MMAS(ACS):
                 self.matrix_pheromones = self.add_pheromones_to_matrix(
                     self.matrix_pheromones,
                     global_best_solution['routes_arcs'],
-                    global_best_solution['cost'])
+                    global_best_solution['cost'],
+                    self.p)
 
                 # Evaporate pheromones
                 self.matrix_pheromones = self.evaporate_pheromones_matrix(
@@ -432,19 +434,12 @@ class MMAS(ACS):
                     candidate_nodes_weights = self.get_candidate_nodes_weight(
                         best_solutions, self.type_candidate_nodes)
 
-                # # Print iteration output
-                # if self.ipynb:
-                #     for line in iteration_output:
-                #         print(line)
-                # else:
-                #     if len(outputs_to_print) == max_outputs_to_print:
-                #         outputs_to_print.pop(0)
-
-                #     iteration_output = ['Iteration {}/{}:'.format(
-                #         i + 1, self.max_iterations
-                #     )] + iteration_output
-                #     outputs_to_print.append(iteration_output)
-                #     same_line_print(outputs_to_print)
+                # Print results
+                if self.ipynb:
+                    continue
+                else:
+                    outputs_to_print.append(iteration_output)
+                    outputs_to_print = self.print_results(outputs_to_print)
 
         # Ending the algorithm run
         final_time = time.time()
@@ -459,6 +454,10 @@ class MMAS(ACS):
                 best_solutions_fitness.add(ant_solution['cost'])
 
         print(f'\n-- Time elapsed: {time_elapsed} --')
+        if len(iterations_stagnations):
+            print('Iterations when do PTS: {}'.format(
+                [stagnation_iteration + 1
+                 for stagnation_iteration in iterations_stagnations]))
 
         print('\nBEST SOLUTION FOUND: {}'.format(
             (global_best_solution['cost'],

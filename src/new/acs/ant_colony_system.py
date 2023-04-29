@@ -1,11 +1,8 @@
-from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
-from typing import Any, List, Tuple
 import numpy as np
 import time
 
 from ..ants import AntSolution
-from ..helpers import same_line_print
 from .ant_system import AS
 from .aco_solution import ACOSolution
 
@@ -35,301 +32,6 @@ class ACS(AS):
         print('\tpheromones_local_update:', self.pheromones_local_update)
         print('\tq0:', self.q0)
 
-    # def create_pheromones_matrix(self,
-    #                              t_delta: float = 0.5,
-    #                              t_min: float = 0.1,
-    #                              t_max: float = 1.0,
-    #                              solutions=None) -> np.ndarray:
-    #     """
-    #     Creates the initial matrix of pheromone trail levels.
-
-    #     Parameters:
-    #         t_delta (float, optional): The initial value of the pheromone
-    #         trail levels.
-
-    #     Returns:
-    #         A matrix of pheromone trail levels with all values initialized to
-    #         t_delta.
-    #         The matrix has shape (num_nodes, num_nodes), where num_nodes
-    #         is the number of nodes in the problem.
-    #     """
-
-    #     shape = len(self.nodes)
-    #     matrix_pheromones = np.full((shape, shape), t_delta)
-    #     # matrix_pheromones = np.full((shape, shape), t_delta)
-
-    #     if self.arcs_clusters_lst:
-    #         num_clusters = len(self.arcs_clusters_lst)
-    #         clusters_factor = 1 + \
-    #             (self.arcs_clusters_importance / num_clusters)
-
-    #         clusters_arcs_flattened = []
-    #         for clusters_arcs in self.arcs_clusters_lst:
-    #             clusters_arcs_flattened += get_flattened_list(clusters_arcs)
-
-    #         for i, j in clusters_arcs_flattened:
-    #             matrix_pheromones[i][j] = t_delta * (1 + clusters_factor)
-
-    #     # if self.arcs_clusters_lst:
-    #     #     clusters_arcs_flattened = []
-
-    #     #     for clusters_arcs in self.arcs_clusters_lst:
-    #     #         clusters_arcs_flattened += get_flattened_list(clusters_arcs)
-
-    #     #     for i in range(shape):
-    #     #         for j in range(shape):
-    #     #             if (i, j) not in clusters_arcs_flattened:
-    #     #                 matrix_pheromones[i][j] = t_delta
-
-    #     if solutions:
-    #         solutions_sorted = sorted(solutions, key=lambda d: d[1])
-    #         best_solutions = solutions_sorted[:5]
-
-    #         for solution in best_solutions:
-    #             solution_flattened_arcs = get_flattened_list(solution[2])
-
-    #             for i, j in solution_flattened_arcs:
-    #                 matrix_pheromones[i][j] += self.get_acs_fitness(
-    #                     solution[1]) * self.p
-
-    #     return matrix_pheromones
-
-    # def get_initial_t_delta(self, matrix_costs: np.ndarray) -> float:
-    #     """
-    #     Calculates the initial value of the pheromone trail levels.
-
-    #     Parameters:
-    #         matrix_costs (np.ndarray): A matrix of the costs between each pair
-    #         of nodes.
-
-    #     Returns:
-    #         The initial value of the pheromone trail levels.
-    #     """
-
-    #     return 1 / (len(self.nodes) * matrix_costs.max())
-
-    # def get_t_delta(self, matrix: np.ndarray) -> float:
-    #     """
-    #     Calculates the initial value of the pheromone trail levels.
-
-    #     Parameters:
-    #         matrix (np.ndarray): A matrix.
-
-    #     Returns:
-    #         The initial value of the pheromone trail levels.
-    #     """
-
-    #     return 1 / matrix.max()
-
-    # def calculate_t_min_t_max(self,
-    #                           best_solution_quality: float) \
-    #         -> Tuple[float, float]:
-    #     """
-    #     Calculates the minimum and maximum values of the pheromone trail
-    #     levels.
-
-    #     Parameters:
-    #         best_quality (float): The quality of the best solution found so
-    #         far.
-
-    #     Returns:
-    #         A tuple containing the minimum and maximum values of the pheromone
-    #         trail levels.
-    #     """
-
-    #     n = len(self.nodes)
-
-    #     t_max = 1 / (self.p * best_solution_quality)
-    #     t_min = t_max * (1 - (0.05) ** (1 / n)) / \
-    #         ((n / 2 - 1) * (0.05) ** (1 / n))
-
-    #     return t_min, t_max
-
-    # def calculate_t_min_t_max_mmas(self, best_solution_quality: float):
-    #     n = len(self.nodes)
-    #     avg = n / 2
-    #     p_best = 0.05
-    #     p_best_n_root = exp(log(p_best) / n)
-
-    #     t_max = (1 / (1 - self.p)) * \
-    #         self.get_acs_fitness(best_solution_quality)
-
-    #     upper = t_max * (1 - p_best_n_root)
-    #     lower = (avg - 1) * p_best_n_root
-
-    #     t_min = upper / lower
-
-    #     return t_min, t_max
-
-    # def get_acs_fitness(self, solutin_quality: float) -> float:
-    #     """
-    #     Calculates the quality of a solution as the inverse of the sum of its
-    #     costs.
-
-    #     Parameters:
-    #         solution_costs (List[float]): A list of the costs of each tour in
-    #         the solution.
-
-    #     Returns:
-    #         The quality of the solution as a float. The higher the value, the
-    #         better the solution.
-    #     """
-
-    #     return 1 / solutin_quality
-
-    # def evaporate_pheromones_matrix(self,
-    #                                 evaporation_rate: float = None) -> None:
-    #     """
-    #     Evaporates the pheromone trail levels in the pheromone matrix.
-
-    #     Parameters:
-    #         None.
-
-    #     Returns:
-    #         None.
-    #     """
-
-    #     self.matrix_pheromones *= self.evaporation_rate if evaporation_rate \
-    #         is None else evaporation_rate
-
-    # def update_pheromones_matrix(self,
-    #                              solution_arcs,
-    #                              solution_quality,
-    #                              factor=1):
-    #     """
-    #     Updates the pheromones matrix based on the given solution arcs and
-    #     quality.
-
-    #     Parameters:
-    #         solution_arcs (List[np.ndarray]): List of 2D numpy arrays
-    #         containing the arcs used in the solution.
-
-    #         solution_quality (float): The quality of the solution.
-
-    #     Returns:
-    #         None.
-    #     """
-
-    #     pheromones_amount = self.get_acs_fitness(solution_quality) * factor
-
-    #     # for arcs_idxs in solution_arcs:
-    #     #     self.matrix_pheromones[arcs_idxs[:, 0],
-    #     #                            arcs_idxs[:, 1]] += pheromones_amount
-
-    #     for arcs_lst in solution_arcs:
-    #         for i, j in arcs_lst:
-    #             self.matrix_pheromones[i][j] += pheromones_amount
-
-    # def set_bounds_to_pheromones_matrix(self, max=1) -> None:
-    #     """
-    #     Sets the minimum and maximum values for the pheromone trail levels,
-    #     based on the values of t_min and t_max.
-
-    #     Parameters:
-    #         None.
-
-    #     Returns:
-    #         None.
-    #     """
-
-    #     np.clip(self.matrix_pheromones, self.t_min,
-    #             max, out=self.matrix_pheromones)
-
-    # def get_normalized_matrix(self, matrix: np.ndarray) -> np.ndarray:
-    #     mask = (matrix != 0) & np.isfinite(matrix)
-
-    #     with np.errstate(divide='ignore'):  # ignore division by zero warnings
-    #         return np.divide(1, matrix, out=np.zeros_like(matrix), where=mask)
-
-    # def get_probabilities_matrix(self, pheromones_matrix: np.ndarray) \
-    #         -> np.ndarray:
-    #     """
-    #     Get the updated matrix of probabilities of choosing an arc.
-
-    #     Parameters:
-    #         None.
-
-    #     Returns:
-    #         A matrix(ndarray) of probabilities of choosing an arc.
-    #     """
-
-    #     if self.type_probabilities_matrix == 'normalized':
-    #         inv_distances_matrix = get_inversed_matrix(
-    #             self.matrix_costs)
-    #         min_not_zero_value = inv_distances_matrix[
-    #             inv_distances_matrix != 0].min()
-    #         max_value = \
-    #             inv_distances_matrix[inv_distances_matrix != np.inf].max()
-
-    #         # Here we normalice the values between min distance
-    #         # and max distance.
-    #         scaler = MinMaxScaler(feature_range=(
-    #             min_not_zero_value, max_value))
-    #         norm_matrix_pheromones = scaler.fit_transform(pheromones_matrix)
-
-    #         return np.multiply(np.power(norm_matrix_pheromones, self.alpha),
-    #                            self.matrix_heuristics)
-    #     else:
-    #         return np.multiply(np.power(pheromones_matrix, self.alpha),
-    #                            self.matrix_heuristics)
-
-    # def get_candidate_nodes_weight(self, solutions, type: str = 'best'):
-    #     """
-    #     Returns a list of candidate starting nodes for the ants, biased
-    #     towards the best starting nodes from the given solutions.
-
-    #     Parameters:
-    #         solutions(list): A list of solutions to the TSP problem, each
-    #         represented as a tuple of a list of arcs and their
-    #         corresponding cost.
-
-    #     Returns:
-    #         list: A list of candidate starting nodes for the ants.
-    #     """
-
-    #     if type == 'random':
-    #         return [random.random() for _ in range(0, len(self.nodes))]
-    #     else:
-    #         all_clients = self.nodes[1:][:]
-    #         half_clients_len = ceil(len(all_clients) / 2)
-    #         max_candidates_set = ceil(half_clients_len / 2)
-
-    #         clientes_sorted_by_distance = sorted(
-    #             all_clients, key=lambda x: self.matrix_costs[x][0])
-    #         closest_nodes = set(
-    #             clientes_sorted_by_distance[:max_candidates_set])
-
-    #         step = ceil(self.k_optimal / 2)
-    #         distributed_solutions = []
-    #         if len(solutions) <= self.k_optimal * step:
-    #             distributed_solutions = sorted(solutions, key=lambda d: d[1])[
-    #                 :self.k_optimal]
-    #         else:
-    #             distributed_solutions = sorted(solutions, key=lambda d: d[1])[
-    #                 ::step][:self.k_optimal]
-
-    #         best_starting_nodes = set()
-    #         for solution in distributed_solutions:
-    #             # if len(best_starting_nodes) >= self.k_optimal:
-    #             #     break
-
-    #             for route in solution[0]:
-    #                 start_node = route[1]
-    #                 # end_node = route[-2]
-
-    #                 best_starting_nodes.add(start_node)
-    #                 # best_starting_nodes.add(end_node)
-
-    #         random_nodes = set(random.sample(all_clients, max_candidates_set))
-
-    #         weights = [get_element_ranking(
-    #             node,
-    #             1,
-    #             [best_starting_nodes, closest_nodes, random_nodes],
-    #             True)
-    #             for node in self.nodes]
-    #         return weights
-
     def solve(self) -> ACOSolution:
         """
         Solve the problem using the Ant Colony Optimization algorithm.
@@ -341,9 +43,6 @@ class ACS(AS):
             ACOSolution: A dictionary with the best-global solution,
             best-iterations solutions and statistics data to the problem.
         """
-
-        self.print_intance_parameters()
-        print('\n')
 
         errors = self.model_problem.validate_instance(
             self.nodes, self.demands, self.max_capacity)
@@ -412,6 +111,9 @@ class ACS(AS):
                                      self.max_iterations,
                                      self.model_problem)
 
+        self.print_intance_parameters()
+        print('\n')
+
         # Solve parameters
         best_solutions = []
         candidate_nodes_weights = None
@@ -421,14 +123,13 @@ class ACS(AS):
         iterations_median_costs = []
         iterations_std_costs = []
         iterations_times = []
-        max_outputs_to_print = 10
         outputs_to_print = []
         start_time = time.time()
 
         # Loop over max_iterations
         with tqdm(total=self.max_iterations) as pbar:
             for it in range(self.max_iterations):
-                pbar.set_description('Global Best: {}'
+                pbar.set_description('Global Best -> {}'
                                      .format('{:.5f}'.format(
                                          global_best_solution['cost'])
                                      ))
@@ -562,19 +263,12 @@ class ACS(AS):
                     candidate_nodes_weights = self.get_candidate_nodes_weight(
                         best_solutions, self.type_candidate_nodes)
 
-                # # Print iteration output
-                # if self.ipynb:
-                #     for line in iteration_output:
-                #         print(line)
-                # else:
-                #     if len(outputs_to_print) == max_outputs_to_print:
-                #         outputs_to_print.pop(0)
-
-                #     iteration_output = ['Iteration {}/{}:'.format(
-                #         i + 1, self.max_iterations
-                #     )] + iteration_output
-                #     outputs_to_print.append(iteration_output)
-                #     same_line_print(outputs_to_print)
+                # Print results
+                if self.ipynb:
+                    continue
+                else:
+                    outputs_to_print.append(iteration_output)
+                    outputs_to_print = self.print_results(outputs_to_print)
 
         # Ending the algorithm run
         final_time = time.time()

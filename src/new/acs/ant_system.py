@@ -1,4 +1,4 @@
-from math import exp, log, ceil
+from math import ceil
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 from typing import Any, List, Tuple
@@ -7,7 +7,8 @@ import random
 import time
 
 from ..ants import AntSolution
-from ..helpers import get_inversed_matrix, get_element_ranking, same_line_print
+from ..helpers import get_inversed_matrix, get_element_ranking, \
+    same_line_print, clear_lines
 from ..models import ProblemModel
 from .aco_solution import ACOSolution
 
@@ -73,7 +74,8 @@ class AS:
         print('\ttype_probabilities_matrix:', self.type_probabilities_matrix)
 
     def create_pheromones_matrix(self,
-                                 initial_pheromones: float = MAX_FLOAT) -> np.ndarray:
+                                 initial_pheromones: float = MAX_FLOAT) \
+            -> np.ndarray:
         """
         Creates the initial matrix of pheromone trail levels.
 
@@ -272,6 +274,30 @@ class AS:
                 for node in self.nodes]
             return weights
 
+    def print_results(self,
+                      outputs_to_print: List[List[str]],
+                      max_saved_outputs: int = 5) -> List[List[str]]:
+        '''
+        Print the results of the algorithm (in a iteration).
+
+        Args:
+            outputs_to_print (List[str]): The outputs to print.
+            max_saved_outputs (int, optional): The maximum of outputs to save.
+
+        Returns:
+            List[str]: The outputs after printed.
+        '''
+
+        if len(outputs_to_print) >= max_saved_outputs:
+            outputs_to_print.pop(0)
+
+        for it_outputs in outputs_to_print:
+            same_line_print(it_outputs, False)
+
+        clear_lines(max_saved_outputs)
+
+        return outputs_to_print
+
     def solve(self) -> ACOSolution:
         """
         Solve the problem using the Ant System algorithm.
@@ -283,8 +309,6 @@ class AS:
             ACOSolution: A dictionary with the best-global solution,
             best-iterations solutions and statistics data to the problem.
         """
-
-        self.print_intance_parameters()
 
         errors = self.model_problem.validate_instance(
             self.nodes, self.demands, self.max_capacity)
@@ -319,6 +343,9 @@ class AS:
                                      self.max_iterations,
                                      self.model_problem)
 
+        self.print_intance_parameters()
+        print('\n')
+
         # Solve parameters
         best_solutions = []
         candidate_nodes_weights = None
@@ -328,14 +355,13 @@ class AS:
         iterations_median_costs = []
         iterations_std_costs = []
         iterations_times = []
-        max_outputs_to_print = 10
         outputs_to_print = []
         start_time = time.time()
 
         # Loop over max_iterations
         with tqdm(total=self.max_iterations) as pbar:
             for it in range(self.max_iterations):
-                pbar.set_description('Global Best: {}'
+                pbar.set_description('Global Best -> {}'
                                      .format('{:.5f}'.format(
                                          global_best_solution['cost'])
                                      ))
@@ -379,10 +405,14 @@ class AS:
 
                 # Update iteration output
                 iteration_output = [
-                    '\n\t> Iteration results: BEST({}), WORST({})'
+                    'It. {}/{} (GB: {}):'.format(
+                        it + 1, self.max_iterations,
+                        '{:.5f}'.format(global_best_solution['cost'])
+                    ),
+                    '\t> Results: BEST({}), WORST({})'
                     .format(iteration_best_solution['cost'],
                             iteration_worst_solution['cost']),
-                    '\t                     MED({}), AVG({}), STD({})\n'
+                    '\t           MED({}), AVG({}), STD({})'
                     .format(costs_median,
                             costs_mean,
                             costs_std)
@@ -442,19 +472,12 @@ class AS:
                     candidate_nodes_weights = self.get_candidate_nodes_weight(
                         best_solutions, self.type_candidate_nodes)
 
-                # # Print iteration output
-                # if self.ipynb:
-                #     for line in iteration_output:
-                #         print(line)
-                # else:
-                #     if len(outputs_to_print) == max_outputs_to_print:
-                #         outputs_to_print.pop(0)
-
-                #     iteration_output = ['Iteration {}/{}:'.format(
-                #         it + 1, self.max_iterations
-                #     )] + iteration_output
-                #     outputs_to_print.append(iteration_output)
-                #     same_line_print(outputs_to_print)
+                # Print results
+                if self.ipynb:
+                    continue
+                else:
+                    outputs_to_print.append(iteration_output)
+                    outputs_to_print = self.print_results(outputs_to_print)
 
         # Ending the algorithm run
         final_time = time.time()

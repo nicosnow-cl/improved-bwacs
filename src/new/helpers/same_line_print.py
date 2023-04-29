@@ -1,3 +1,5 @@
+from typing import List
+
 LINE_UP = '\033[1A'
 LINE_CLEAR = '\x1b[2K'
 
@@ -7,11 +9,11 @@ def clear_lines(n=1):
         print(LINE_UP, end=LINE_CLEAR)
 
 
-def same_line_print(content_list):
+def same_line_print(content_list: List[str], clear: bool = True):
     total_lines = 0
-    for content in content_list:
-        for line in content:
-            total_lines += 1
-            print(line)
+    for line in content_list:
+        total_lines += 1
+        print(line)
 
-    clear_lines(total_lines)
+    if clear:
+        clear_lines(total_lines)
