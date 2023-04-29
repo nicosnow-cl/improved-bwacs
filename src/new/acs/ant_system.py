@@ -12,7 +12,7 @@ from ..models import ProblemModel
 from .aco_solution import ACOSolution
 
 MAX_FLOAT = 1.0
-MIN_FLOAT = np.finfo(np.float32).min
+MIN_FLOAT = np.finfo(float).tiny
 
 
 class AS:
@@ -67,6 +67,8 @@ class AS:
         print('\tmax_capacity:', self.max_capacity)
         print('\tmax_iterations:', self.max_iterations)
         print('\tp:', self.p)
+        print('\tt_max: {:.384f}'.format(self.t_max))
+        print('\tt_min: {:.384f}'.format(self.t_min))
         print('\ttare:', self.tare)
         print('\ttype_probabilities_matrix:', self.type_probabilities_matrix)
 
@@ -272,7 +274,14 @@ class AS:
 
     def solve(self) -> ACOSolution:
         """
-        Solves the problem.
+        Solve the problem using the Ant System algorithm.
+
+        Args:
+            None.
+
+        Returns:
+            ACOSolution: A dictionary with the best-global solution,
+            best-iterations solutions and statistics data to the problem.
         """
 
         self.print_intance_parameters()

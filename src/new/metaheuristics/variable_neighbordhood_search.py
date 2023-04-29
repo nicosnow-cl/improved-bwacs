@@ -1,7 +1,9 @@
+from typing import List
+import numpy as np
 import random
 import time
-import numpy as np
 
+from ..acs.aco_solution import ACOSolution
 from ..helpers import check_if_route_load_is_valid, get_route_load, \
     get_route_arcs, get_ls_max_time
 
@@ -169,7 +171,9 @@ class GeneralVNS():
 
         return new_solution
 
-    def improve(self, initial_solution, actual_iteration):
+    def improve(self,
+                initial_solution: List[int],
+                actual_iteration: int) -> ACOSolution:
         best_solution = initial_solution.copy()
         best_solution_costs = self.model_problem.fitness(
             best_solution, self.matrix_distances)
@@ -247,9 +251,19 @@ class GeneralVNS():
 
         # print(neighborhoods_ranking)
 
-        return (best_solution,
-                best_solution_quality,
-                [np.array(get_route_arcs(route)) for route in best_solution],
-                best_solution_costs,
-                [get_route_load(route, self.lst_demands)
-                    for route in best_solution])
+        # return (best_solution,
+        #         best_solution_quality,
+        #         [np.array(get_route_arcs(route)) for route in best_solution],
+        #         best_solution_costs,
+        #         [get_route_load(route, self.lst_demands)
+        #             for route in best_solution])
+
+        return {
+            'cost': best_solution_quality,
+            'routes_arcs': [np.array(get_route_arcs(route))
+                            for route in best_solution],
+            'routes_costs': best_solution_costs,
+            'routes_loads': [get_route_load(route, self.lst_demands)
+                             for route in best_solution],
+            'routes': best_solution
+        }

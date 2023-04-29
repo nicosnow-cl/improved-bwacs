@@ -7,9 +7,10 @@ import time
 from ..ants import AntSolution
 from ..helpers import same_line_print
 from .ant_system import AS
+from .aco_solution import ACOSolution
 
 MAX_FLOAT = 1.0
-MIN_FLOAT = np.finfo(np.float32).min
+MIN_FLOAT = np.finfo(float).tiny
 
 
 class ACS(AS):
@@ -23,12 +24,14 @@ class ACS(AS):
         self.epsilon = self.p / self.ants_num
         self.pheromones_local_update = False
         self.q0 = 0.8
-        self.t_zero = 0.5
+        self.t_zero = (self.t_max + self.t_min) / 2
 
         self.__dict__.update(kwargs)
 
     def print_intance_parameters(self):
         super().print_intance_parameters()
+
+        print('\tepsilon:', self.epsilon)
         print('\tpheromones_local_update:', self.pheromones_local_update)
         print('\tq0:', self.q0)
 
@@ -327,9 +330,16 @@ class ACS(AS):
     #             for node in self.nodes]
     #         return weights
 
-    def solve(self):
+    def solve(self) -> ACOSolution:
         """
-        Solves the problem.
+        Solve the problem using the Ant Colony Optimization algorithm.
+
+        Args:
+            None.
+
+        Returns:
+            ACOSolution: A dictionary with the best-global solution,
+            best-iterations solutions and statistics data to the problem.
         """
 
         self.print_intance_parameters()
