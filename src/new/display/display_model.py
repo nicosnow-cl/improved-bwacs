@@ -1,9 +1,11 @@
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-import numpy as np
 from matplotlib.gridspec import GridSpec
+from typing import Tuple, List
+import matplotlib.cm as cm
+import matplotlib.pyplot as plt
+import numpy as np
 
 from src.new.helpers import get_route_arcs
+from src.new.aco import AntSolution
 
 
 class DisplayModel():
@@ -49,14 +51,14 @@ class DisplayModel():
         plt.show()
 
     @staticmethod
-    def render_solution(solution,
-                        matrix_coords,
-                        name,
-                        solutions=None,
-                        avg_costs=None,
-                        median_costs=None,
-                        output_file=None,
-                        base_figsize=(14, 6)):
+    def render_solution(solution: AntSolution,
+                        matrix_coords: np.ndarray,
+                        name: str,
+                        solutions: List[AntSolution] = None,
+                        avg_costs: List[float] = None,
+                        median_costs: List[float] = None,
+                        output_file: str = None,
+                        base_figsize: Tuple[int] = (14, 6)):
         figsize = list(base_figsize)
         if solutions is not None or avg_costs is not None or \
                 median_costs is not None:
@@ -67,14 +69,14 @@ class DisplayModel():
         plt.subplot(1, 2, 1)
         plt.title(f'Solution ({name})')
 
-        k = len(solution[0])
+        k = len(solution['routes'])
         color_palette = cm.jet(np.linspace(0, 1, k + 1))
 
         depot_x = matrix_coords[0][0]
         depot_y = matrix_coords[0][1]
         plt.plot(depot_x, depot_y, c='r', marker='s')
 
-        for idx, route in enumerate(solution[0]):
+        for idx, route in enumerate(solution['routes']):
             for node in route:
                 if node == 0:
                     continue
@@ -102,7 +104,7 @@ class DisplayModel():
 
             iterations = [it + 1 for it in range(len(solutions))]
             solutions_reverse = solutions
-            costs = [sol[1] for sol in solutions_reverse]
+            costs = [sol['cost'] for sol in solutions_reverse]
 
             plt.plot(iterations, costs, c='b',
                      linewidth=2.0, label='It. Best Cost')
@@ -111,7 +113,6 @@ class DisplayModel():
             plt.subplot(1, 2, 2)
 
             iterations = [it + 1 for it in range(len(solutions))]
-            solutions_reverse = solutions
             costs = [cost for cost in avg_costs]
 
             plt.plot(iterations, costs, c='g',
@@ -121,7 +122,6 @@ class DisplayModel():
             plt.subplot(1, 2, 2)
 
             iterations = [it + 1 for it in range(len(solutions))]
-            solutions_reverse = solutions
             costs = [cost for cost in median_costs]
 
             plt.plot(iterations, costs, c='y',

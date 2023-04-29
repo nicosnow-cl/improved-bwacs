@@ -4,6 +4,7 @@ import random
 
 from ..helpers import get_route_arcs
 from ..models.vehicle_model import VehicleModel
+from .ant_solution import AntSolution
 
 
 class FreeAnt:
@@ -126,8 +127,8 @@ class FreeAnt:
 
         return route, route_cost, vehicle['load']
 
-    def generate_solution(self, ant_best_start_nodes=[]):
-        solution = []
+    def generate_solution(self, ant_best_start_nodes=[]) -> AntSolution:
+        routes = []
         costs = []
         loads = []
         unvisited_nodes = self.clients.copy()
@@ -136,13 +137,17 @@ class FreeAnt:
             route, cost, vehicle_load = \
                 self.generate_route(unvisited_nodes, ant_best_start_nodes)
 
-            solution.append(route)
+            routes.append(route)
             costs.append(cost)
             loads.append(vehicle_load)
 
             unvisited_nodes.difference_update(route)
 
-        fitness = sum(costs)
-        routes_arcs = [np.array(get_route_arcs(route)) for route in solution]
-
-        return solution, fitness, routes_arcs, costs, loads
+        return {
+            'cost': sum(costs),
+            'routes_arcs': [np.array(get_route_arcs(route))
+                            for route in routes],
+            'routes_costs': costs,
+            'routes_loads': loads,
+            'routes': routes
+        }

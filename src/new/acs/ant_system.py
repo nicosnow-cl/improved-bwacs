@@ -4,6 +4,7 @@ from typing import Any, List, Tuple
 import numpy as np
 import time
 
+from .aco_solution import ACOSolution
 from ..helpers import get_inversed_matrix, same_line_print
 
 MAX_FLOAT = 1.0
@@ -203,7 +204,7 @@ class AS:
             return np.multiply(np.power(pheromones_matrix, self.alpha),
                                self.matrix_heuristics)
 
-    def solve(self):
+    def solve(self) -> ACOSolution:
         """
         Solves the problem.
         """
@@ -241,10 +242,15 @@ class AS:
                                      self.model_problem)
 
         # Solve parameters
-        best_solutions = []
-        global_best_solution = (None, np.inf, None, None, None)
         max_outputs_to_print = 10
         outputs_to_print = []
+        best_solutions = []
+        global_best_solution = {'cost': np.inf, 'routes_arcs': [
+        ], 'routes_costs': [], 'routes_loads': [], 'routes': []}
+        iterations_mean_costs = []
+        iterations_median_costs = []
+        iterations_std_costs = []
+        iterations_times = []
         start_time = time.time()
 
         # Loop over max_iterations
@@ -252,7 +258,7 @@ class AS:
             for it in range(self.max_iterations):
                 pbar.set_description('Global Best: {}'
                                      .format('{:.5f}'.format(
-                                         global_best_solution[1])
+                                         global_best_solution['cost'])
                                      ))
                 pbar.update(1)
 
@@ -260,18 +266,19 @@ class AS:
 
                 # Generate solutions for each ant and update pheromones matrix
                 for _ in range(self.ants_num):
-                    solution = ant.generate_solution()
-                    iterations_solutions.append(solution)
+                    ant_solution = ant.generate_solution()
+                    iterations_solutions.append(ant_solution)
 
                 # Sort solutions by fitness and filter by k_optimal
                 iterations_solutions_sorted = sorted(iterations_solutions,
-                                                     key=lambda d: d[1])
+                                                     key=lambda d: d['cost'])
                 iterations_solutions_sorted_and_restricted = [
                     solution for solution in iterations_solutions_sorted
-                    if len(solution[0]) == self.k_optimal]
+                    if len(solution['routes']) == self.k_optimal]
 
                 # Select best and worst solutions and compute relative costs
-                iteration_best_solution = (None, np.inf, None, None, None)
+                iteration_best_solution = {'cost': np.inf, 'routes_arcs': [
+                ], 'routes_costs': [], 'routes_loads': [], 'routes': []}
                 iteration_worst_solution = iterations_solutions_sorted[-1]
                 if iterations_solutions_sorted_and_restricted:
                     iteration_best_solution = \
@@ -281,17 +288,20 @@ class AS:
 
                 # Calculate relative costs
                 costs_median = np.median(
-                    [solution[1] for solution in iterations_solutions_sorted])
+                    [solution['cost'] for solution
+                     in iterations_solutions_sorted])
                 costs_mean = np.mean(
-                    [solution[1] for solution in iterations_solutions_sorted])
+                    [solution['cost'] for solution
+                     in iterations_solutions_sorted])
                 costs_std = np.std(
-                    [solution[1] for solution in iterations_solutions_sorted])
+                    [solution['cost'] for solution
+                     in iterations_solutions_sorted])
 
                 # Update iteration output
                 iteration_output = [
                     '\n\t> Iteration results: BEST({}), WORST({})'
-                    .format(iteration_best_solution[1],
-                            iteration_worst_solution[1]),
+                    .format(iteration_best_solution['cost'],
+                            iteration_worst_solution['cost']),
                     '\t                     MED({}), AVG({}), STD({})\n'
                     .format(costs_median,
                             costs_mean,
@@ -299,25 +309,28 @@ class AS:
                 ]
 
                 # LS on best iteration solution
-                ls_it_solution = (None, np.inf, None, None, None)
+                ls_it_solution = {'cost': np.inf, 'routes_arcs': [
+                ], 'routes_costs': [], 'routes_loads': [], 'routes': []}
                 if ls_it:
                     ls_it_solution = ls_it.improve(
-                        iteration_best_solution[0], it)
-                    iteration_output[0] += ', LS({})'.format(ls_it_solution[1])
+                        iteration_best_solution['routes'], it)
+                    iteration_output[0] += ', LS({})'.format(
+                        ls_it_solution['cost'])
 
                 # Update global best solution if LS best solution is better
                 # or iteration best solution is better
-                if ls_it_solution[1] < global_best_solution[1]:
+                if ls_it_solution['cost'] < global_best_solution['cost']:
                     global_best_solution = ls_it_solution
-                elif iteration_best_solution[1] < global_best_solution[1]:
+                elif iteration_best_solution['cost'] < \
+                        global_best_solution['cost']:
                     global_best_solution = iteration_best_solution
 
                 # Update pheromones matrix by individual ant
-                for solution in iterations_solutions:
+                for ant_solution in iterations_solutions:
                     self.matrix_pheromones = self.add_pheromones_to_matrix(
                         self.matrix_pheromones,
-                        solution[2],
-                        solution[1])
+                        ant_solution['routes_arcs'],
+                        ant_solution['cost'])
 
                 # Evaporate pheromones matrix
                 self.matrix_pheromones = self.evaporate_pheromones_matrix(
@@ -339,6 +352,10 @@ class AS:
 
                 # Append iteration best solution to list of best solutions
                 best_solutions.append(iteration_best_solution)
+                iterations_mean_costs.append(costs_mean)
+                iterations_median_costs.append(costs_median)
+                iterations_std_costs.append(costs_std)
+                iterations_times.append(time.time() - start_time)
 
                 # # Print iteration output
                 # if self.ipynb:
@@ -361,25 +378,30 @@ class AS:
         # Sort best solutions by fitness and filter by k_optimal
         best_solutions_set = []
         best_solutions_fitness = set()
-        for solution in sorted(best_solutions, key=lambda d: d[1]):
-            if solution[1] not in best_solutions_fitness:
-                best_solutions_set.append(solution)
-                best_solutions_fitness.add(solution[1])
+        for ant_solution in sorted(best_solutions, key=lambda d: d['cost']):
+            if ant_solution['cost'] not in best_solutions_fitness:
+                best_solutions_set.append(ant_solution)
+                best_solutions_fitness.add(ant_solution['cost'])
 
         print(f'\n-- Time elapsed: {time_elapsed} --')
 
         print('\nBEST SOLUTION FOUND: {}'.format(
-            (global_best_solution[1],
-             global_best_solution[0],
-             len(global_best_solution[0]),
-             global_best_solution[4])))
+            (global_best_solution['cost'],
+             global_best_solution['routes'],
+             len(global_best_solution['routes']),
+             global_best_solution['routes_loads'])))
         print('Best 5 solutions: {}'
-              .format([(ant_solution[1], len(ant_solution[0]), ant_solution[4])
+              .format([(ant_solution['cost'],
+                        len(ant_solution['routes']),
+                        ant_solution['routes_loads'])
                        for ant_solution in best_solutions_set][:5]))
 
-        return (global_best_solution,
-                best_solutions,
-                costs_mean,
-                costs_median,
-                costs_std,
-                time_elapsed)
+        return {
+            'best_solutions': best_solutions,
+            'global_best_solution': global_best_solution,
+            'iterations_mean_costs': iterations_mean_costs,
+            'iterations_median_costs': iterations_median_costs,
+            'iterations_std_costs': iterations_std_costs,
+            'iterations_times': iterations_times,
+            'total_time': time_elapsed
+        }
