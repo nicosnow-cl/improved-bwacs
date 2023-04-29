@@ -2,7 +2,7 @@ from itertools import permutations
 from threading import Thread
 import numpy as np
 
-from src.new.aco import FreeAnt
+from src.new.ants import FreeAnt
 from src.new.acs import ACS
 from src.new.helpers import get_coords_matrix, get_distances_matrix
 from src.new.machine_learning import KMeans

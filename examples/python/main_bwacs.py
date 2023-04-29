@@ -1,8 +1,8 @@
 from math import ceil
 from threading import Thread
 
-from src.new.aco import FreeAnt
-from src.new.acs import BWACS
+from src.new.ants import FreeAnt
+from src.new.acs import BWAS
 from src.new.helpers import get_distances_matrix
 from src.new.heuristics import HeuristicModel
 from src.new.metaheuristics import GeneralVNS
@@ -89,7 +89,7 @@ parameters_ants = {
     # 'type_candidate_nodes': CANDIDATE_NODES_TYPE,
 }
 
-acs = BWACS(**parameters_ants)
+acs = BWAS(**parameters_ants)
 
 if THREAD:
     thread = Thread(target=acs.run)

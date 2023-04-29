@@ -1,11 +1,15 @@
+from math import exp, log, ceil
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
 from typing import Any, List, Tuple
 import numpy as np
+import random
 import time
 
+from ..ants import AntSolution
+from ..helpers import get_inversed_matrix, get_element_ranking, same_line_print
+from ..models import ProblemModel
 from .aco_solution import ACOSolution
-from ..helpers import get_inversed_matrix, same_line_print
 
 MAX_FLOAT = 1.0
 MIN_FLOAT = np.finfo(np.float32).min
@@ -30,10 +34,12 @@ class AS:
     model_ant: Any
     model_ls_it: Any
     nodes: List[int]
+    model_problem: ProblemModel
     p: float
     t_max: float
     t_min: float
     tare: float
+    type_candidate_nodes: str
     type_probabilities_matrix: str
 
     def __init__(self, **kwargs):
@@ -45,6 +51,7 @@ class AS:
         self.evaporation_rate = (1 - self.p)
         self.t_max = MAX_FLOAT
         self.t_min = MIN_FLOAT
+        self.type_candidate_nodes = None
         self.type_probabilities_matrix = 'normal'
 
         self.__dict__.update(kwargs)
@@ -55,7 +62,6 @@ class AS:
         print('\tants_num:', self.ants_num)
         print('\tarcs_clusters_importance:', self.arcs_clusters_importance)
         print('\tbeta:', self.beta)
-        print('\tdemands:', self.demands)
         print('\tevaporation_rate:', self.evaporation_rate)
         print('\tk_optimal:', self.k_optimal)
         print('\tmax_capacity:', self.max_capacity)
@@ -63,9 +69,9 @@ class AS:
         print('\tp:', self.p)
         print('\ttare:', self.tare)
         print('\ttype_probabilities_matrix:', self.type_probabilities_matrix)
-        print('\n')
 
-    def create_pheromones_matrix(self, t_max: float = MAX_FLOAT) -> np.ndarray:
+    def create_pheromones_matrix(self,
+                                 initial_pheromones: float = MAX_FLOAT) -> np.ndarray:
         """
         Creates the initial matrix of pheromone trail levels.
 
@@ -80,7 +86,7 @@ class AS:
         """
 
         shape = len(self.nodes)
-        matrix_pheromones = np.full((shape, shape), t_max)
+        matrix_pheromones = np.full((shape, shape), initial_pheromones)
 
         return matrix_pheromones
 
@@ -198,11 +204,71 @@ class AS:
                 min_not_zero_value, max_value))
             norm_matrix_pheromones = scaler.fit_transform(pheromones_matrix)
 
-            return np.multiply(np.power(norm_matrix_pheromones, self.alpha),
-                               self.matrix_heuristics)
+            return np.multiply(np.power(norm_matrix_pheromones, alpha),
+                               heuristics_matrix)
         else:
-            return np.multiply(np.power(pheromones_matrix, self.alpha),
-                               self.matrix_heuristics)
+            return np.multiply(np.power(pheromones_matrix, alpha),
+                               heuristics_matrix)
+
+    def get_candidate_nodes_weight(self,
+                                   solutions: List[AntSolution],
+                                   type: str = 'best') -> List[float]:
+        """
+        Returns a list of candidate starting nodes for the ants, biased
+        towards the best starting nodes from the given solutions.
+
+        Args:
+            solutions (List[AntSolution]): The list of solutions.
+            type (str, optional): The type of candidate nodes to return.
+
+        Returns:
+            A list of candidate starting nodes for the ants.
+        """
+
+        if type == 'random':
+            return [random.random() for _ in range(0, len(self.nodes))]
+        else:
+            all_clients = self.nodes[1:][:]
+            half_clients_len = ceil(len(all_clients) / 2)
+            max_candidates_set = ceil(half_clients_len / 2)
+
+            clientes_sorted_by_distance = sorted(
+                all_clients, key=lambda x: self.matrix_costs[x][0])
+            closest_nodes = set(
+                clientes_sorted_by_distance[:max_candidates_set])
+
+            step = ceil(self.k_optimal / 2)
+            distributed_solutions = []
+            if len(solutions) <= self.k_optimal * step:
+                distributed_solutions = sorted(solutions,
+                                               key=lambda d: d['cost'])[
+                    :self.k_optimal]
+            else:
+                distributed_solutions = sorted(solutions,
+                                               key=lambda d: d['cost'])[
+                    ::step][:self.k_optimal]
+
+            best_starting_nodes = set()
+            for solution in distributed_solutions:
+                # if len(best_starting_nodes) >= self.k_optimal:
+                #     break
+
+                for route in solution['routes']:
+                    start_node = route[1]
+                    # end_node = route[-2]
+
+                    best_starting_nodes.add(start_node)
+                    # best_starting_nodes.add(end_node)
+
+            random_nodes = set(random.sample(all_clients, max_candidates_set))
+
+            weights = [get_element_ranking(
+                node,
+                1,
+                [best_starting_nodes, closest_nodes, random_nodes],
+                True)
+                for node in self.nodes]
+            return weights
 
     def solve(self) -> ACOSolution:
         """
@@ -219,7 +285,10 @@ class AS:
         # Starting initial matrixes
         self.matrix_pheromones = self.create_pheromones_matrix(self.t_max)
         self.matrix_probabilities = self.create_probabilities_matrix(
-            self.matrix_pheromones.copy(), self.matrix_heuristics.copy())
+            self.matrix_pheromones.copy(),
+            self.matrix_heuristics.copy(),
+            self.alpha,
+            self.beta)
 
         # Create ants
         ant = self.model_ant(self.nodes,
@@ -242,15 +311,16 @@ class AS:
                                      self.model_problem)
 
         # Solve parameters
-        max_outputs_to_print = 10
-        outputs_to_print = []
         best_solutions = []
+        candidate_nodes_weights = None
         global_best_solution = {'cost': np.inf, 'routes_arcs': [
         ], 'routes_costs': [], 'routes_loads': [], 'routes': []}
         iterations_mean_costs = []
         iterations_median_costs = []
         iterations_std_costs = []
         iterations_times = []
+        max_outputs_to_print = 10
+        outputs_to_print = []
         start_time = time.time()
 
         # Loop over max_iterations
@@ -266,7 +336,8 @@ class AS:
 
                 # Generate solutions for each ant and update pheromones matrix
                 for _ in range(self.ants_num):
-                    ant_solution = ant.generate_solution()
+                    ant_solution = ant.generate_solution(
+                        candidate_nodes_weights)
                     iterations_solutions.append(ant_solution)
 
                 # Sort solutions by fitness and filter by k_optimal
@@ -356,6 +427,11 @@ class AS:
                 iterations_median_costs.append(costs_median)
                 iterations_std_costs.append(costs_std)
                 iterations_times.append(time.time() - start_time)
+
+                # Update candidate nodes weights
+                if self.type_candidate_nodes is not None:
+                    candidate_nodes_weights = self.get_candidate_nodes_weight(
+                        best_solutions, self.type_candidate_nodes)
 
                 # # Print iteration output
                 # if self.ipynb:

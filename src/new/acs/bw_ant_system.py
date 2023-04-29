@@ -7,7 +7,7 @@ from ..helpers import get_flattened_list, same_line_print
 from .ant_colony_system import ACS
 
 
-class BWACS(ACS):
+class BWAS(ACS):
     delta: int
     p_m: float
     percent_arcs_limit: float

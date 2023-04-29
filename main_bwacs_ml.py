@@ -3,8 +3,8 @@ from threading import Thread
 from math import ceil
 import numpy as np
 
-from src.new.aco import FreeAnt
-from src.new.acs import BWACS
+from src.new.ants import FreeAnt
+from src.new.acs import BWAS
 from src.new.helpers import get_distances_matrix
 from src.new.machine_learning import KMeans
 from src.new.metaheuristics import GeneralVNS
@@ -114,7 +114,7 @@ parameters_ants = {
     'work_with_candidate_nodes': WORK_WITH_CANDIDATE_NODES,
 }
 
-bwacs = BWACS(**parameters_ants)
+bwacs = BWAS(**parameters_ants)
 
 if THREAD:
     thread = Thread(target=bwacs.run)

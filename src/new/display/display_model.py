@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from src.new.helpers import get_route_arcs
-from src.new.aco import AntSolution
+from src.new.ants import AntSolution
 
 
 class DisplayModel():

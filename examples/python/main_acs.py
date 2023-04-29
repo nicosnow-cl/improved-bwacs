@@ -1,7 +1,7 @@
 from math import ceil
 from threading import Thread
 
-from src.new.aco import FreeAnt
+from src.new.ants import FreeAnt
 from src.new.acs import ACS
 from src.new.helpers import get_distances_matrix
 from src.new.heuristics import HeuristicModel

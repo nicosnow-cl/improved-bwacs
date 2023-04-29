@@ -3,7 +3,7 @@ import random
 import time
 
 from src.new.helpers import get_repeated_elements_from_list
-from src.new.aco import FreeAnt
+from src.new.ants import FreeAnt
 from src.new.metaheuristics import GeneralVNS
 from src.new.models import VRPModel, VehicleModel
 from src.readers import ReaderCVRPLIB

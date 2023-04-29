@@ -1,7 +1,7 @@
 from typing import List
 from typing_extensions import TypedDict
 
-from ..aco.ant_solution import AntSolution
+from ..ants.ant_solution import AntSolution
 
 
 class ACOSolution(TypedDict):

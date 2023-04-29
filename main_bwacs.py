@@ -1,7 +1,7 @@
 import numpy as np
 
-from src.new.aco import FreeAnt
-from src.new.acs import BWACS
+from src.new.ants import FreeAnt
+from src.new.acs import BWAS
 from src.new.helpers import get_coords_matrix, get_distances_matrix
 from src.new.models import VRPModel
 from src.readers import ReaderCVRPLIB
@@ -52,5 +52,5 @@ parameters = {
     'work_with_candidate_nodes': True
 }
 
-acs = BWACS(**parameters)
+acs = BWAS(**parameters)
 global_best_solution, best_solutions_set = acs.run()
