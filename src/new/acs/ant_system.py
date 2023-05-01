@@ -279,19 +279,19 @@ class AS:
             half_clients_len = ceil(len(all_clients) / 2)
 
             clientes_sorted_by_distance = sorted(
-                all_clients, key=lambda x: self.matrix_costs[x][0])
+                all_clients, key=lambda x: self.matrix_costs[0][x])
             closest_nodes = set(
                 clientes_sorted_by_distance[:half_clients_len])
 
-            initial_solutions_nodes = set()
-            for solution in solutions[:ceil(self.max_iterations / 2)]:
-                if len(initial_solutions_nodes) >= \
-                        half_clients_len:
-                    break
+            # initial_solutions_nodes = set()
+            # for solution in solutions[:ceil(self.max_iterations / 2)]:
+            #     if len(initial_solutions_nodes) >= \
+            #             half_clients_len:
+            #         break
 
-                for route in solution['routes']:
-                    start_node = route[1]
-                    initial_solutions_nodes.add(start_node)
+            #     for route in solution['routes']:
+            #         start_node = route[1]
+            #         initial_solutions_nodes.add(start_node)
 
             random_nodes = set(random.sample(
                 all_clients, ceil(half_clients_len / 2)))
