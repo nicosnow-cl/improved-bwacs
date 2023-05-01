@@ -101,7 +101,7 @@ class BWAS(MMAS):
                                                          sigma)
         t_threshold = self.get_t_threshold(
             pheromones_matrix_copy, solution_arcs)
-        mutation_value = (mutation_intensity * t_threshold) * 0.01
+        mutation_value = (mutation_intensity * t_threshold) * 0.0005
 
         for i in range(pheromones_matrix_copy.shape[0]):
             if np.random.rand() < p_m:
@@ -145,7 +145,7 @@ class BWAS(MMAS):
                                                          sigma)
         t_threshold = self.get_t_threshold(
             pheromones_matrix_copy, solution_arcs)
-        mutation_value = (mutation_intensity * t_threshold) * 0.01
+        mutation_value = (mutation_intensity * t_threshold) * 0.0001
 
         # Use triu_indices to get upper triangle indices
         iu = np.triu_indices(pheromones_matrix_copy.shape[0], k=1)

@@ -232,47 +232,108 @@ class AS:
         if type == 'random':
             return [random.random() for _ in range(0, len(self.nodes))]
         else:
+            # OLD
+            # all_clients = self.nodes[1:][:]
+            # half_clients_len = ceil(len(all_clients) / 2)
+            # max_candidates_set = ceil(half_clients_len / 2)
+
+            # clientes_sorted_by_distance = sorted(
+            #     all_clients, key=lambda x: self.matrix_costs[x][0])
+            # closest_nodes = set(
+            #     clientes_sorted_by_distance[:max_candidates_set])
+
+            # step = ceil(self.k_optimal / 2)
+            # distributed_solutions = []
+            # if len(solutions) <= self.k_optimal * step:
+            #     distributed_solutions = sorted(solutions,
+            #                                    key=lambda d: d['cost'])[
+            #         :self.k_optimal]
+            # else:
+            #     distributed_solutions = sorted(solutions,
+            #                                    key=lambda d: d['cost'])[
+            #         ::step][:self.k_optimal]
+
+            # best_starting_nodes = set()
+            # for solution in distributed_solutions:
+            #     # if len(best_starting_nodes) >= self.k_optimal:
+            #     #     break
+
+            #     for route in solution['routes']:
+            #         start_node = route[1]
+            #         # end_node = route[-2]
+
+            #         best_starting_nodes.add(start_node)
+            #         # best_starting_nodes.add(end_node)
+
+            # random_nodes = set(random.sample(all_clients, max_candidates_set))
+
+            # weights = [get_element_ranking(
+            #     node,
+            #     1,
+            #     [best_starting_nodes, closest_nodes, random_nodes],
+            #     True)
+            #     for node in self.nodes]
+            # return weights
+
             all_clients = self.nodes[1:][:]
             half_clients_len = ceil(len(all_clients) / 2)
-            max_candidates_set = ceil(half_clients_len / 2)
 
             clientes_sorted_by_distance = sorted(
                 all_clients, key=lambda x: self.matrix_costs[x][0])
             closest_nodes = set(
-                clientes_sorted_by_distance[:max_candidates_set])
+                clientes_sorted_by_distance[:half_clients_len])
 
-            step = ceil(self.k_optimal / 2)
-            distributed_solutions = []
-            if len(solutions) <= self.k_optimal * step:
-                distributed_solutions = sorted(solutions,
-                                               key=lambda d: d['cost'])[
-                    :self.k_optimal]
-            else:
-                distributed_solutions = sorted(solutions,
-                                               key=lambda d: d['cost'])[
-                    ::step][:self.k_optimal]
-
-            best_starting_nodes = set()
-            for solution in distributed_solutions:
-                # if len(best_starting_nodes) >= self.k_optimal:
-                #     break
+            initial_solutions_nodes = set()
+            for solution in solutions[:ceil(self.max_iterations / 2)]:
+                if len(initial_solutions_nodes) >= \
+                        half_clients_len:
+                    break
 
                 for route in solution['routes']:
                     start_node = route[1]
-                    # end_node = route[-2]
+                    initial_solutions_nodes.add(start_node)
 
-                    best_starting_nodes.add(start_node)
-                    # best_starting_nodes.add(end_node)
+            random_nodes = set(random.sample(
+                all_clients, ceil(half_clients_len / 2)))
 
-            random_nodes = set(random.sample(all_clients, max_candidates_set))
+            candidates = [closest_nodes] + [random_nodes]
+            # [initial_solutions_nodes] + \
 
-            weights = [get_element_ranking(
-                node,
-                1,
-                [best_starting_nodes, closest_nodes, random_nodes],
-                True)
-                for node in self.nodes]
-            return weights
+            return [random.uniform(.9, 1) if node in candidates else 0.0 for node in self.nodes]
+
+            # initial_solutions_nodes = set()
+            # for solution in solutions[:ceil(self.max_iterations / 2)]:
+            #     if len(initial_solutions_nodes) >= \
+            #             half_clients_len:
+            #         break
+
+            #     for route in solution['routes']:
+            #         start_node = route[1]
+            #         initial_solutions_nodes.add(start_node)
+
+            # random_nodes = set(random.sample(
+            #     all_clients, self.k_optimal))
+
+            # candidates = [closest_nodes, initial_solutions_nodes, random_nodes]
+
+            # def get_weight(node):
+            #     base = 0.0
+
+            #     if node in candidates[2]:
+            #         base += random.random()
+
+            #         return base
+
+            #     if node in candidates[0]:
+            #         base += 0.33
+            #     if node in candidates[1]:
+            #         base += 0.33
+
+            #     return base
+
+            # return [get_weight(node) for node in self.nodes]
+
+            # # return [random.random() if node in candidates else 0.0 for node in self.nodes]
 
     def print_results(self,
                       outputs_to_print: List[List[str]],
@@ -387,8 +448,7 @@ class AS:
                 ], 'routes_costs': [], 'routes_loads': [], 'routes': []}
                 iteration_worst_solution = iterations_solutions_sorted[-1]
                 if iterations_solutions_sorted_and_restricted:
-                    iteration_best_solution = \
-                        iterations_solutions_sorted_and_restricted[0]
+                    iteration_best_solution = iterations_solutions_sorted_and_restricted[0]
                 else:
                     iteration_best_solution = iterations_solutions_sorted[0]
 
@@ -448,9 +508,8 @@ class AS:
                     self.evaporation_rate)
 
                 # Apply bounds to pheromones matrix
-                self.matrix_pheromones = \
-                    self.apply_bounds_to_pheromones_matrix(self.t_min,
-                                                           self.t_max)
+                self.matrix_pheromones = self.apply_bounds_to_pheromones_matrix(self.t_min,
+                                                                                self.t_max)
 
                 # Update probabilities matrix
                 self.matrix_probabilities = self.create_probabilities_matrix(
