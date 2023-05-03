@@ -459,8 +459,7 @@ class BWAS(MMAS):
                     self.matrix_pheromones = self.add_pheromones_to_matrix(
                         self.matrix_pheromones,
                         global_best_solution['routes_arcs'],
-                        global_best_solution['cost'],
-                    )
+                        global_best_solution['cost'])
 
                 # Penalize pheromones matrix by worst solution
                 self.matrix_pheromones = self.penalize_pheromones_matrix(

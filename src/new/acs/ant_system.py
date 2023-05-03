@@ -7,8 +7,7 @@ import random
 import time
 
 from ..ants import AntSolution
-from ..helpers import get_inversed_matrix, get_element_ranking, \
-    same_line_print, clear_lines
+from ..helpers import get_inversed_matrix, same_line_print, clear_lines
 from ..models import ProblemModel
 from .aco_solution import ACOSolution
 
@@ -372,7 +371,8 @@ class AS:
                 ], 'routes_costs': [], 'routes_loads': [], 'routes': []}
                 iteration_worst_solution = iterations_solutions_sorted[-1]
                 if iterations_solutions_sorted_and_restricted:
-                    iteration_best_solution = iterations_solutions_sorted_and_restricted[0]
+                    iteration_best_solution = \
+                        iterations_solutions_sorted_and_restricted[0]
                 else:
                     iteration_best_solution = iterations_solutions_sorted[0]
 
@@ -432,8 +432,9 @@ class AS:
                     self.evaporation_rate)
 
                 # Apply bounds to pheromones matrix
-                self.matrix_pheromones = self.apply_bounds_to_pheromones_matrix(self.t_min,
-                                                                                self.t_max)
+                self.matrix_pheromones = \
+                    self.apply_bounds_to_pheromones_matrix(self.t_min,
+                                                           self.t_max)
 
                 # Update probabilities matrix
                 self.matrix_probabilities = self.create_probabilities_matrix(

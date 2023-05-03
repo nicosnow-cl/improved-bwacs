@@ -1,4 +1,3 @@
-from matplotlib.gridspec import GridSpec
 from typing import Tuple, List
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -83,10 +82,14 @@ class DisplayModel():
 
                 x = matrix_coords[node][0]
                 y = matrix_coords[node][1]
+                desc_x = x + (x * 0.01)
+                desc_y = y - (y * 0.03)
 
                 plt.plot(x, y, c='c', marker='o', alpha=0.3)
-                # plt.annotate('$q_{%d}=%d$' % (i, self.demands_array[i]), (
-                #     matrix_coords[i][0] * 0.2, (matrix_coords[i][1]-3) * 0.2))
+                plt.annotate(f'n{node}',
+                             (desc_x, desc_y),
+                             alpha=0.3,
+                             fontsize=8)
 
             route_arcs = get_route_arcs(route)
             for i, j in route_arcs:
@@ -107,15 +110,14 @@ class DisplayModel():
                         (i_x, j_x), (i_y, j_y), c=color_palette[idx])
         plt.grid()
 
-        if solutions is not None:
+        if median_costs is not None:
             plt.subplot(1, 2, 2)
 
             iterations = [it + 1 for it in range(len(solutions))]
-            solutions_reverse = solutions
-            costs = [sol['cost'] for sol in solutions_reverse]
+            costs = [cost for cost in median_costs]
 
-            plt.plot(iterations, costs, c='b',
-                     linewidth=2.0, label='It. Best Cost')
+            plt.plot(iterations, costs, c='y',
+                     linewidth=2.0, label='It. Median Cost')
 
         if avg_costs is not None:
             plt.subplot(1, 2, 2)
@@ -126,14 +128,23 @@ class DisplayModel():
             plt.plot(iterations, costs, c='g',
                      linewidth=2.0, label='It. Avg Cost')
 
-        if median_costs is not None:
+        if solutions is not None:
             plt.subplot(1, 2, 2)
 
             iterations = [it + 1 for it in range(len(solutions))]
-            costs = [cost for cost in median_costs]
+            solutions_reverse = solutions
+            costs = [sol['cost'] for sol in solutions_reverse]
+            it_max_cost = np.argmax(costs)
+            max_cost = costs[it_max_cost]
+            it_min_cost = np.argmin(costs)
+            min_cost = costs[it_min_cost]
 
-            plt.plot(iterations, costs, c='y',
-                     linewidth=2.0, label='It. Median Cost')
+            plt.plot(iterations, costs, c='b',
+                     linewidth=2.0, label='It. Best Cost')
+            plt.plot(it_max_cost + 1, max_cost, c='r',
+                     marker='o', label='Max Cost')
+            plt.plot(it_min_cost + 1, min_cost, c='g',
+                     marker='o', label='Min Cost')
 
         if solutions is not None or avg_costs is not None or \
                 median_costs is not None:
