@@ -5,9 +5,11 @@ from typing import Any, List, Tuple
 import numpy as np
 import random
 import time
+import itertools
+from scipy.spatial import ConvexHull
 
 from ..ants import AntSolution
-from ..helpers import get_inversed_matrix, same_line_print, clear_lines
+from ..helpers import get_inversed_matrix, same_line_print, clear_lines, get_flattened_list
 from ..models import ProblemModel
 from .aco_solution import ACOSolution
 
@@ -18,8 +20,7 @@ MIN_FLOAT = np.finfo(float).tiny
 class AS:
     alpha: float
     ants_num: int
-    arcs_clusters_importance: float
-    arcs_clusters_lst: List[List[Tuple]]
+    clusters: List[List[Tuple]]
     beta: float
     demands: List[float]
     evaporation_rate: float
@@ -29,6 +30,7 @@ class AS:
     matrix_heuristics: np.ndarray
     matrix_pheromones: np.ndarray
     matrix_probabilities: np.ndarray
+    matrix_coords = np.ndarray
     max_capacity: float
     max_iterations: int
     model_ant: Any
@@ -44,20 +46,23 @@ class AS:
 
     def __init__(self, **kwargs):
         self.arcs_clusters_importance = 0
-        self.arcs_clusters_lst = None
+        self.clusters = None
         self.ipynb = False
+        self.matrix_coords = None
         self.model_ls_it = None
         self.p = 0.2
         self.evaporation_rate = (1 - self.p)
         self.t_max = MAX_FLOAT
         self.t_min = MIN_FLOAT
         self.type_candidate_nodes = None
-        self.type_probabilities_matrix = 'normal'
+        self.type_probabilities_matrix = 'classic'
 
         self.__dict__.update(kwargs)
 
     def print_intance_parameters(self):
-        print('\nPARAMETERS:')
+        print('\nPARAMETERS')
+        print('AS:')
+        print('----------------------------------------')
         print('\talpha:', self.alpha)
         print('\tants_num:', self.ants_num)
         print('\tarcs_clusters_importance:', self.arcs_clusters_importance)
@@ -73,8 +78,8 @@ class AS:
         print('\ttype_probabilities_matrix:', self.type_probabilities_matrix)
 
     def create_pheromones_matrix(self,
-                                 initial_pheromones: float = MAX_FLOAT) \
-            -> np.ndarray:
+                                 initial_pheromones: float = MAX_FLOAT,
+                                 clusters: List[int] = None) -> np.ndarray:
         """
         Creates the initial matrix of pheromone trail levels.
 
@@ -90,6 +95,32 @@ class AS:
 
         shape = len(self.nodes)
         matrix_pheromones = np.full((shape, shape), initial_pheromones)
+
+        if clusters is not None:
+            total_arcs = []
+
+            for cluster in clusters:
+                nodes_points = [[self.matrix_coords[node][0],
+                                 self.matrix_coords[node][1]]
+                                for node in cluster]
+                hull = ConvexHull(nodes_points)
+                vertexs = [cluster[vertex] for vertex in hull.vertices]
+                arcs = list(zip(vertexs, vertexs[1:] + vertexs[:1]))
+                total_arcs += arcs
+
+            for i in range(shape):
+                for j in range(shape):
+                    if (i, j) not in total_arcs:
+                        matrix_pheromones[i][j] *= self.p
+
+            # clusters_arcs = [list(itertools.combinations(
+            #     cluster, 2)) for cluster in clusters]
+            # clusters_arcs_flattened = get_flattened_list(clusters_arcs)
+
+            # for i in range(shape):
+            #     for j in range(shape):
+            #         if (i, j) in clusters_arcs_flattened:
+            #             matrix_pheromones[i][j] *= self.evaporation_rate
 
         return matrix_pheromones
 
@@ -300,7 +331,9 @@ class AS:
             raise Exception(errors)
 
         # Starting initial matrixes
-        self.matrix_pheromones = self.create_pheromones_matrix(self.t_max)
+        self.matrix_pheromones = self.create_pheromones_matrix(
+            self.t_max,
+            clusters=self.clusters)
         self.matrix_probabilities = self.create_probabilities_matrix(
             self.matrix_pheromones.copy(),
             self.matrix_heuristics.copy(),
@@ -354,9 +387,12 @@ class AS:
                 iterations_solutions = []
 
                 # Generate solutions for each ant and update pheromones matrix
-                for _ in range(self.ants_num):
-                    ant_solution = ant.generate_solution(
-                        candidate_nodes_weights)
+                for ant_idx in range(self.ants_num):
+                    if candidate_nodes_weights:
+                        ant_solution = ant.generate_solution(
+                            candidate_nodes_weights[ant_idx])
+                    else:
+                        ant_solution = ant.generate_solution()
                     iterations_solutions.append(ant_solution)
 
                 # Sort solutions by fitness and filter by k_optimal

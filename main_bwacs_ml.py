@@ -75,7 +75,7 @@ parameters_kmeans = {
 
 
 kmeans = KMeans(**parameters_kmeans)
-clusters, arcs_clusters_lst, best_cost, _, _, solutions = kmeans.run()
+clusters, clusters_arcs, best_cost, _, _, solutions = kmeans.run()
 
 best_solutions_clusters = solutions[:]
 best_solutions_clusters.reverse()
@@ -90,7 +90,7 @@ parameters_ants = {
     'alpha': ALPHA,
     'ants_num': ceil(len(clients) / ANTS_NUM_RELATION),
     'arcs_clusters_importance': .5,  # t_delta[i][j] *= (1 + 0.5)
-    'arcs_clusters_lst': [arcs_clusters_lst],
+    'arcs_clusters_lst': [clusters_arcs],
     'beta': BETA,
     'delta': DELTA,
     'demands_array': demands,

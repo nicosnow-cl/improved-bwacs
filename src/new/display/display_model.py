@@ -96,6 +96,8 @@ class DisplayModel():
         plt.annotate('DEPOT', (desc_depot_x, desc_depot_y),
                      alpha=0.3, fontsize=8)
 
+        plt.grid()
+
         if output_file:
             plt.savefig(output_file)
 
