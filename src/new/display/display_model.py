@@ -50,6 +50,58 @@ class DisplayModel():
         plt.show()
 
     @staticmethod
+    def render_k_means_clusters(clusters,
+                                centroids,
+                                matrix_coords: np.ndarray,
+                                name: str,
+                                output_file: str = None,
+                                figsize: Tuple[int] = (10, 10)):
+        plt.figure(figsize=figsize)
+        plt.title(f'Best Clusters ({name})')
+
+        k = len(clusters)
+        color_palette = cm.jet(np.linspace(0, 1, k + 1))
+
+        for idx, cluster in enumerate(clusters):
+            for node in cluster:
+                x = matrix_coords[node][0]
+                y = matrix_coords[node][1]
+                desc_x = x + (x * 0.01)
+                desc_y = y - (y * 0.03)
+
+                plt.plot(x, y, c=color_palette[idx], marker='o')
+                plt.annotate(f'n{node}', (desc_x, desc_y),
+                             alpha=0.3, fontsize=8)
+
+        for idx, centroid in enumerate(centroids):
+            x = centroid[0]
+            y = centroid[1]
+            desc_x = x + (x * 0.01)
+            desc_y = y - (y * 0.03)
+
+            plt.plot(x, y, c=color_palette[idx], marker='^', markersize=14)
+            plt.annotate(f'$cent_{idx}$', (desc_x, desc_y),
+                         alpha=0.6, fontsize=10)
+
+            for node in clusters[idx]:
+                i_x = matrix_coords[node][0]
+                i_y = matrix_coords[node][1]
+                plt.plot((i_x, x), (i_y, y), c=color_palette[idx], alpha=0.3)
+
+        depot_x = matrix_coords[0][0]
+        depot_y = matrix_coords[0][1]
+        desc_depot_x = depot_x + (depot_x * 0.01)
+        desc_depot_y = depot_y - (depot_y * 0.03)
+        plt.plot(depot_x, depot_y, c='k', marker='s')
+        plt.annotate('DEPOT', (desc_depot_x, desc_depot_y),
+                     alpha=0.3, fontsize=8)
+
+        if output_file:
+            plt.savefig(output_file)
+
+        plt.show()
+
+    @staticmethod
     def render_solution(solution: AntSolution,
                         matrix_coords: np.ndarray,
                         name: str,
@@ -86,10 +138,8 @@ class DisplayModel():
                 desc_y = y - (y * 0.03)
 
                 plt.plot(x, y, c='c', marker='o', alpha=0.3)
-                plt.annotate(f'n{node}',
-                             (desc_x, desc_y),
-                             alpha=0.3,
-                             fontsize=8)
+                plt.annotate(f'n{node}', (desc_x, desc_y),
+                             alpha=0.3, fontsize=8)
 
             route_arcs = get_route_arcs(route)
             for i, j in route_arcs:
