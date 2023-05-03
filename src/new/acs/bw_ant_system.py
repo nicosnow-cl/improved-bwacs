@@ -2,6 +2,7 @@ from tqdm import tqdm
 from typing import List
 import numpy as np
 import time
+from random import random
 
 from ..helpers import get_flattened_list
 from .mm_ant_system import MMAS
@@ -101,7 +102,7 @@ class BWAS(MMAS):
                                                          sigma)
         t_threshold = self.get_t_threshold(
             pheromones_matrix_copy, solution_arcs)
-        mutation_value = (mutation_intensity * t_threshold) * 0.0005
+        mutation_value = (mutation_intensity * t_threshold) * 0.0001
 
         for i in range(pheromones_matrix_copy.shape[0]):
             if np.random.rand() < p_m:
@@ -337,10 +338,13 @@ class BWAS(MMAS):
 
                 iterations_solutions = []
 
-                # Generate solutions for each ant
-                for _ in range(self.ants_num):
-                    ant_solution = ant.generate_solution(
-                        candidate_nodes_weights)
+                # Generate solutions for each ant and update pheromones matrix
+                for ant_idx in range(self.ants_num):
+                    if candidate_nodes_weights:
+                        ant_solution = ant.generate_solution(
+                            candidate_nodes_weights[ant_idx])
+                    else:
+                        ant_solution = ant.generate_solution()
                     iterations_solutions.append(ant_solution)
 
                     # Update pheromones matrix with local update
@@ -443,17 +447,20 @@ class BWAS(MMAS):
                     self.t_zero = self.get_as_fitness(
                         (len(self.nodes) - 1) * global_best_solution['cost'])
 
-                # Evaporate pheromones
-                self.matrix_pheromones = self.evaporate_pheromones_matrix(
-                    self.matrix_pheromones,
-                    self.evaporation_rate)
-
-                # Update pheromone matrix by global best
-                self.matrix_pheromones = self.add_pheromones_to_matrix(
-                    self.matrix_pheromones,
-                    global_best_solution['routes_arcs'],
-                    global_best_solution['cost'],
-                    self.p)
+                # Update pheromone matrix by global best or iteration best
+                if random() < 0.75:
+                    self.matrix_pheromones = self.add_pheromones_to_matrix(
+                        self.matrix_pheromones,
+                        iteration_best_solution['routes_arcs'],
+                        iteration_best_solution['cost'],
+                        max(self.p,
+                            (self.max_iterations - it) / self.max_iterations))
+                else:
+                    self.matrix_pheromones = self.add_pheromones_to_matrix(
+                        self.matrix_pheromones,
+                        global_best_solution['routes_arcs'],
+                        global_best_solution['cost'],
+                    )
 
                 # Penalize pheromones matrix by worst solution
                 self.matrix_pheromones = self.penalize_pheromones_matrix(
@@ -461,6 +468,11 @@ class BWAS(MMAS):
                     global_best_solution['routes_arcs'],
                     iteration_worst_solution['routes_arcs'],
                     self.p)
+
+                # Evaporate pheromones
+                self.matrix_pheromones = self.evaporate_pheromones_matrix(
+                    self.matrix_pheromones,
+                    self.evaporation_rate)
 
                 # Restart pheromones matrix if stagnation is reached
                 if self.percent_arcs_limit:
@@ -543,8 +555,10 @@ class BWAS(MMAS):
                 prev_median = costs_median
 
                 # Update candidate nodes weights
-                if self.type_candidate_nodes is not None \
-                        and len(best_solutions):
+                # if self.type_candidate_nodes is not None \
+                #         and len(best_solutions)  \
+                #         and (it / self.max_iterations) >= 0.25:
+                if self.type_candidate_nodes is not None:
                     candidate_nodes_weights = self.get_candidate_nodes_weight(
                         best_solutions, self.type_candidate_nodes)
 

@@ -95,8 +95,16 @@ class DisplayModel():
                 j_x = matrix_coords[j][0]
                 j_y = matrix_coords[j][1]
 
-                plt.plot(
-                    (i_x, j_x), (i_y, j_y), c=color_palette[idx])
+                if i == 0 or j == 0:
+                    plt.plot(
+                        (i_x, j_x),
+                        (i_y, j_y),
+                        c=color_palette[idx],
+                        alpha=0.5,
+                        linestyle='--')
+                else:
+                    plt.plot(
+                        (i_x, j_x), (i_y, j_y), c=color_palette[idx])
         plt.grid()
 
         if solutions is not None:

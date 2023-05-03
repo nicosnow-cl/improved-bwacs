@@ -3,6 +3,7 @@ from tqdm import tqdm
 from typing import List, Tuple
 import numpy as np
 import time
+from random import random
 
 from ..ants import AntSolution
 from .ant_colony_system import ACS
@@ -261,9 +262,12 @@ class MMAS(ACS):
                 iterations_solutions = []
 
                 # Generate solutions for each ant and update pheromones matrix
-                for _ in range(self.ants_num):
-                    ant_solution = ant.generate_solution(
-                        candidate_nodes_weights)
+                for ant_idx in range(self.ants_num):
+                    if candidate_nodes_weights:
+                        ant_solution = ant.generate_solution(
+                            candidate_nodes_weights[ant_idx])
+                    else:
+                        ant_solution = ant.generate_solution()
                     iterations_solutions.append(ant_solution)
 
                     # Update pheromones matrix with local update
@@ -359,12 +363,18 @@ class MMAS(ACS):
                         self.p_best,
                         global_best_solution['cost'])
 
-                # Update pheromone matrix by global best
-                self.matrix_pheromones = self.add_pheromones_to_matrix(
-                    self.matrix_pheromones,
-                    global_best_solution['routes_arcs'],
-                    global_best_solution['cost'],
-                    self.p)
+                # Update pheromone matrix by global best or iteration best
+                if random() > it / self.max_iterations:
+                    self.matrix_pheromones = self.add_pheromones_to_matrix(
+                        self.matrix_pheromones,
+                        iteration_best_solution['routes_arcs'],
+                        iteration_best_solution['cost'],
+                        self.p)
+                else:
+                    self.matrix_pheromones = self.add_pheromones_to_matrix(
+                        self.matrix_pheromones,
+                        global_best_solution['routes_arcs'],
+                        global_best_solution['cost'])
 
                 # Evaporate pheromones
                 self.matrix_pheromones = self.evaporate_pheromones_matrix(

@@ -185,9 +185,9 @@ class GeneralVNS():
 
         neighborhoods_samples = [self.single_route_relocate,
                                  self.single_route_swap,
-                                 self.two_routes_relocate,
                                  self.two_routes_swap,
-                                 self.two_routes_exchange
+                                 #  self.two_routes_relocate,
+                                 #  self.two_routes_exchange
                                  ]
         shake = neighborhoods_samples[-1]
 
@@ -202,7 +202,8 @@ class GeneralVNS():
                 actual_solution, self.matrix_distances)
             actual_solution_quality = sum(actual_solution_costs)
             neighborhoods = random.choices(neighborhoods_samples,
-                                           weights=(5, 4, 3, 2, 1),
+                                           weights=(3, 3, 2),
+                                           #    weights=(5, 4, 3, 2, 1),
                                            k=self.k_number)
 
             for neighborhood in neighborhoods:
