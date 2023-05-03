@@ -27,7 +27,8 @@ class BWAS(MMAS):
     def print_intance_parameters(self):
         super().print_intance_parameters()
 
-        print('\t------------------')
+        print('BWAS:')
+        print('----------------------------------------')
         print('\tinitial t_zero: {:.384f}'.format(self.t_zero))
         print('\tp_m:', self.p_m)
         print('\tsigma:', self.sigma)
@@ -244,7 +245,9 @@ class BWAS(MMAS):
             raise Exception(errors)
 
         # Starting initial matrixes
-        self.matrix_pheromones = self.create_pheromones_matrix(self.t_max)
+        self.matrix_pheromones = self.create_pheromones_matrix(
+            self.t_max,
+            self.lst_clusters)
         self.matrix_probabilities = self.create_probabilities_matrix(
             self.matrix_pheromones.copy(),
             self.matrix_heuristics.copy(),
@@ -281,7 +284,8 @@ class BWAS(MMAS):
 
         # Create real pheromones matrix
         self.matrix_pheromones = self.create_pheromones_matrix(
-            self.t_zero)
+            self.t_zero,
+            lst_clusters=self.lst_clusters)
         self.matrix_probabilities = self.create_probabilities_matrix(
             self.matrix_pheromones.copy(),
             self.matrix_heuristics.copy(),
@@ -485,7 +489,8 @@ class BWAS(MMAS):
                             iteration_worst_solution['routes_arcs'],
                             self.percent_arcs_limit):
                         self.matrix_pheromones = self.create_pheromones_matrix(
-                            self.t_zero)
+                            self.t_zero,
+                            self.lst_clusters)
 
                         iteration_output.append('\t* Stagnation detected!!!')
                         iterations_restarts.append(it)
@@ -503,7 +508,8 @@ class BWAS(MMAS):
                             prev_median,
                             self.percent_quality_limit):
                         self.matrix_pheromones = self.create_pheromones_matrix(
-                            self.t_zero)
+                            self.t_zero,
+                            self.lst_clusters)
 
                         iteration_output.append('\t* Stagnation detected!!!')
                         iterations_restarts.append(it)

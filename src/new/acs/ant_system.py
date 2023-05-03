@@ -5,11 +5,12 @@ from typing import Any, List, Tuple
 import numpy as np
 import random
 import time
-import itertools
+# import itertools
 from scipy.spatial import ConvexHull
 
 from ..ants import AntSolution
-from ..helpers import get_inversed_matrix, same_line_print, clear_lines, get_flattened_list
+from ..helpers import get_inversed_matrix, same_line_print, clear_lines
+# get_flattened_list
 from ..models import ProblemModel
 from .aco_solution import ACOSolution
 
@@ -20,7 +21,7 @@ MIN_FLOAT = np.finfo(float).tiny
 class AS:
     alpha: float
     ants_num: int
-    clusters: List[List[Tuple]]
+    lst_clusters: List[List[List[int]]]
     beta: float
     demands: List[float]
     evaporation_rate: float
@@ -46,7 +47,7 @@ class AS:
 
     def __init__(self, **kwargs):
         self.arcs_clusters_importance = 0
-        self.clusters = None
+        self.lst_clusters = None
         self.ipynb = False
         self.matrix_coords = None
         self.model_ls_it = None
@@ -79,7 +80,8 @@ class AS:
 
     def create_pheromones_matrix(self,
                                  initial_pheromones: float = MAX_FLOAT,
-                                 clusters: List[int] = None) -> np.ndarray:
+                                 lst_clusters: List[List[List[int]]] = None) \
+            -> np.ndarray:
         """
         Creates the initial matrix of pheromone trail levels.
 
@@ -96,22 +98,25 @@ class AS:
         shape = len(self.nodes)
         matrix_pheromones = np.full((shape, shape), initial_pheromones)
 
-        if clusters is not None:
+        if lst_clusters is not None:
             total_arcs = []
 
-            for cluster in clusters:
-                nodes_points = [[self.matrix_coords[node][0],
-                                 self.matrix_coords[node][1]]
-                                for node in cluster]
-                hull = ConvexHull(nodes_points)
-                vertexs = [cluster[vertex] for vertex in hull.vertices]
-                arcs = list(zip(vertexs, vertexs[1:] + vertexs[:1]))
-                total_arcs += arcs
+            for clusters in lst_clusters:
+                for cluster in clusters:
+                    nodes_points = [[self.matrix_coords[node][0],
+                                    self.matrix_coords[node][1]]
+                                    for node in cluster]
+                    hull = ConvexHull(nodes_points)
+                    vertexs = [cluster[vertex] for vertex in hull.vertices]
+                    arcs = list(zip(vertexs, vertexs[1:] + vertexs[:1]))
+                    total_arcs += arcs
 
             for i in range(shape):
                 for j in range(shape):
                     if (i, j) not in total_arcs:
-                        matrix_pheromones[i][j] *= self.p
+                        # matrix_pheromones[i][j] = (self.t_max + self.t_min) / 2
+                        # matrix_pheromones[i][j] = MIN_FLOAT
+                        matrix_pheromones[i][j] = self.p
 
             # clusters_arcs = [list(itertools.combinations(
             #     cluster, 2)) for cluster in clusters]
@@ -333,7 +338,7 @@ class AS:
         # Starting initial matrixes
         self.matrix_pheromones = self.create_pheromones_matrix(
             self.t_max,
-            clusters=self.clusters)
+            lst_clusters=self.lst_clusters)
         self.matrix_probabilities = self.create_probabilities_matrix(
             self.matrix_pheromones.copy(),
             self.matrix_heuristics.copy(),
