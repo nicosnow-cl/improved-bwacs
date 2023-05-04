@@ -8,7 +8,7 @@ import time
 # import itertools
 from scipy.spatial import ConvexHull
 
-from ..ants import AntSolution
+from ..ants import AntSolution, FreeAnt
 from ..helpers import get_inversed_matrix, same_line_print, clear_lines
 # get_flattened_list
 from ..models import ProblemModel
@@ -21,61 +21,77 @@ MIN_FLOAT = np.finfo(float).tiny
 class AS:
     alpha: float
     ants_num: int
-    lst_clusters: List[List[List[int]]]
     beta: float
     demands: List[float]
     evaporation_rate: float
     ipynb: bool
     k_optimal: int
+    lst_clusters: List[List[List[int]]]
+    matrix_coords = np.ndarray
     matrix_costs: np.ndarray
     matrix_heuristics: np.ndarray
     matrix_pheromones: np.ndarray
     matrix_probabilities: np.ndarray
-    matrix_coords = np.ndarray
     max_capacity: float
     max_iterations: int
     model_ant: Any
     model_ls_it: Any
-    nodes: List[int]
     model_problem: ProblemModel
-    p: float
+    nodes: List[int]
+    rho: float
     t_max: float
     t_min: float
     tare: float
     type_candidate_nodes: str
+    # 'all_ants', 'it_best', 'g_best', 'pseudo_g_best'
+    type_pheromones_update: str
     type_probabilities_matrix: str
 
     def __init__(self, **kwargs):
-        self.arcs_clusters_importance = 0
-        self.lst_clusters = None
+        self.alpha = 1
+        self.beta = 1
         self.ipynb = False
+        self.lst_clusters = None
         self.matrix_coords = None
+        self.max_iterations = 300
         self.model_ls_it = None
-        self.p = 0.2
-        self.evaporation_rate = (1 - self.p)
+        self.rho = 0.2
+        self.evaporation_rate = (1 - self.rho)
         self.t_max = MAX_FLOAT
         self.t_min = MIN_FLOAT
+        self.tare = 0
         self.type_candidate_nodes = None
+        self.type_pheromones_update = 'all_ants'
         self.type_probabilities_matrix = 'classic'
 
         self.__dict__.update(kwargs)
 
     def print_intance_parameters(self):
         print('\nPARAMETERS')
-        print('AS:')
         print('----------------------------------------')
+        print('AS:')
         print('\talpha:', self.alpha)
         print('\tants_num:', self.ants_num)
-        print('\tarcs_clusters_importance:', self.arcs_clusters_importance)
         print('\tbeta:', self.beta)
+        print('\tdemands:', len(self.demands))
         print('\tevaporation_rate:', self.evaporation_rate)
+        print('\titerations_local_search:', 'yes' if self.model_ls_it
+              else 'no')
         print('\tk_optimal:', self.k_optimal)
+        print('\tlst_clusters:', 'yes' if self.lst_clusters else 'no')
         print('\tmax_capacity:', self.max_capacity)
         print('\tmax_iterations:', self.max_iterations)
-        print('\tp:', self.p)
-        print('\tt_max: {:.384f}'.format(self.t_max))
-        print('\tt_min: {:.384f}'.format(self.t_min))
+        print('\tmin_demand: {}, max_demand: {}, mean: {}'.format(
+            min(self.demands), max(self.demands), np.mean(self.demands)))
+        print('\tmodel_ant:', 'Free Ant' if type(
+            self.model_ant) == type(FreeAnt) else 'Restricted Ant')
+        print('\tnodes:', len(self.nodes[1:]))
+        print('\trho:', self.rho)
+        print('\tt_max: {:.50f}'.format(self.t_max))
+        print('\tt_min: {:.50f}'.format(self.t_min))
         print('\ttare:', self.tare)
+        print('\ttype_candidate_nodes:', self.type_candidate_nodes)
+        print('\ttype_pheromones_update:', self.type_pheromones_update)
         print('\ttype_probabilities_matrix:', self.type_probabilities_matrix)
 
     def create_pheromones_matrix(self,
@@ -114,9 +130,10 @@ class AS:
             for i in range(shape):
                 for j in range(shape):
                     if (i, j) not in total_arcs:
-                        # matrix_pheromones[i][j] = (self.t_max + self.t_min) / 2
+                        # matrix_pheromones[i][j] = \
+                        # (self.t_max + self.t_min) / 2
                         # matrix_pheromones[i][j] = MIN_FLOAT
-                        matrix_pheromones[i][j] = self.p
+                        matrix_pheromones[i][j] *= self.rho
 
             # clusters_arcs = [list(itertools.combinations(
             #     cluster, 2)) for cluster in clusters]
@@ -168,7 +185,7 @@ class AS:
                                  pheromones_matrix: np.ndarray,
                                  solution_arcs: List[Tuple],
                                  solution_quality: float,
-                                 factor=1) -> np.ndarray:
+                                 factor: float = 1.0) -> np.ndarray:
         """
         Adds pheromone trail levels to the pheromone matrix.
 
@@ -184,8 +201,9 @@ class AS:
         """
 
         pheromones_amount = self.get_as_fitness(solution_quality) * factor
-        for arcs_lst in solution_arcs:
-            for arc in arcs_lst:
+
+        for arcs in solution_arcs:
+            for arc in arcs:
                 i, j = arc
                 pheromones_matrix[i][j] += pheromones_amount
 
@@ -214,7 +232,7 @@ class AS:
                                     pheromones_matrix: np.ndarray,
                                     heuristics_matrix: np.ndarray,
                                     alpha: float = 1.0,
-                                    beta: float = 2.0) -> np.ndarray:
+                                    beta: float = 1.0) -> np.ndarray:
         """
         Creates the probabilities matrix.
 
@@ -229,7 +247,10 @@ class AS:
             The probabilities matrix.
         """
 
-        if self.type_probabilities_matrix == 'normalized':
+        if self.type_probabilities_matrix == 'classic':
+            return np.multiply(np.power(pheromones_matrix, alpha),
+                               np.power(heuristics_matrix, beta))
+        else:
             inv_distances_matrix = get_inversed_matrix(
                 self.matrix_costs)
             min_not_zero_value = inv_distances_matrix[
@@ -244,10 +265,7 @@ class AS:
             norm_matrix_pheromones = scaler.fit_transform(pheromones_matrix)
 
             return np.multiply(np.power(norm_matrix_pheromones, alpha),
-                               heuristics_matrix)
-        else:
-            return np.multiply(np.power(pheromones_matrix, alpha),
-                               heuristics_matrix)
+                               np.power(heuristics_matrix, beta))
 
     def get_candidate_nodes_weight(self,
                                    solutions: List[AntSolution],
@@ -338,7 +356,7 @@ class AS:
         # Starting initial matrixes
         self.matrix_pheromones = self.create_pheromones_matrix(
             self.t_max,
-            lst_clusters=self.lst_clusters)
+            self.lst_clusters)
         self.matrix_probabilities = self.create_probabilities_matrix(
             self.matrix_pheromones.copy(),
             self.matrix_heuristics.copy(),
@@ -369,9 +387,9 @@ class AS:
         print('\n')
 
         # Solve parameters
-        best_solutions = []
+        best_solutions: List[AntSolution] = []
         candidate_nodes_weights = None
-        global_best_solution = {'cost': np.inf, 'routes_arcs': [
+        global_best_solution: AntSolution = {'cost': np.inf, 'routes_arcs': [
         ], 'routes_costs': [], 'routes_loads': [], 'routes': []}
         iterations_mean_costs = []
         iterations_median_costs = []
@@ -460,12 +478,41 @@ class AS:
                         global_best_solution['cost']:
                     global_best_solution = iteration_best_solution
 
-                # Update pheromones matrix by individual ant
-                for ant_solution in iterations_solutions:
+                # Update pheromones matrix
+
+                if self.type_pheromones_update == 'all_ants':
+                    for ant_solution in iterations_solutions:
+                        self.matrix_pheromones = self.add_pheromones_to_matrix(
+                            self.matrix_pheromones,
+                            ant_solution['routes_arcs'],
+                            ant_solution['cost'],
+                            self.rho)
+                elif self.type_pheromones_update == 'it_best':
                     self.matrix_pheromones = self.add_pheromones_to_matrix(
                         self.matrix_pheromones,
-                        ant_solution['routes_arcs'],
-                        ant_solution['cost'])
+                        iteration_best_solution['routes_arcs'],
+                        iteration_best_solution['cost'])
+                elif self.type_pheromones_update == 'g_best':
+                    self.matrix_pheromones = self.add_pheromones_to_matrix(
+                        self.matrix_pheromones,
+                        global_best_solution['routes_arcs'],
+                        global_best_solution['cost'])
+                elif self.type_pheromones_update == 'pseudo_g_best':
+                    if random.random() < 0.75:
+                        self.matrix_pheromones = self.add_pheromones_to_matrix(
+                            self.matrix_pheromones,
+                            iteration_best_solution['routes_arcs'],
+                            iteration_best_solution['cost'],
+                            max(self.rho,
+                                ((self.max_iterations - it) /
+                                 self.max_iterations)))
+                    else:
+                        self.matrix_pheromones = self.add_pheromones_to_matrix(
+                            self.matrix_pheromones,
+                            global_best_solution['routes_arcs'],
+                            global_best_solution['cost'])
+                else:
+                    raise Exception('Invalid pheromones update type')
 
                 # Evaporate pheromones matrix
                 self.matrix_pheromones = self.evaporate_pheromones_matrix(

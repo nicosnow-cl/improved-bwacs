@@ -42,7 +42,7 @@ class FreeAnt:
         if self.q0 is None:
             return random.choices(valid_nodes, probabilities, k=1)[0]
 
-        if random.random() > self.q0:
+        if random.random() <= self.q0:
             return valid_nodes[probabilities_of_nodes.argmax()]
         else:
             return random.choices(valid_nodes, probabilities, k=1)[0]

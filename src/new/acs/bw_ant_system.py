@@ -352,7 +352,7 @@ class BWAS(MMAS):
                     iterations_solutions.append(ant_solution)
 
                     # Update pheromones matrix with local update
-                    if self.pheromones_local_update and \
+                    if self.pheromones_online_update and \
                             len(ant_solution['routes']) == self.k_optimal:
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones,
@@ -457,7 +457,7 @@ class BWAS(MMAS):
                         self.matrix_pheromones,
                         iteration_best_solution['routes_arcs'],
                         iteration_best_solution['cost'],
-                        max(self.p,
+                        max(self.rho,
                             (self.max_iterations - it) / self.max_iterations))
                 else:
                     self.matrix_pheromones = self.add_pheromones_to_matrix(
@@ -470,7 +470,7 @@ class BWAS(MMAS):
                     self.matrix_pheromones,
                     global_best_solution['routes_arcs'],
                     iteration_worst_solution['routes_arcs'],
-                    self.p)
+                    self.rho)
 
                 # Evaporate pheromones
                 self.matrix_pheromones = self.evaporate_pheromones_matrix(
@@ -560,9 +560,6 @@ class BWAS(MMAS):
                 prev_median = costs_median
 
                 # Update candidate nodes weights
-                # if self.type_candidate_nodes is not None \
-                #         and len(best_solutions)  \
-                #         and (it / self.max_iterations) >= 0.25:
                 if self.type_candidate_nodes is not None:
                     candidate_nodes_weights = self.get_candidate_nodes_weight(
                         best_solutions, self.type_candidate_nodes)

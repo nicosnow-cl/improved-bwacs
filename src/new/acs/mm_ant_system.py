@@ -21,7 +21,7 @@ class MMAS(ACS):
         super().__init__(**kwargs)
 
         self.delta = 0.02
-        self.p = 0.02
+        self.rho = 0.02
         self.p_best = 0.05
         self.percent_arcs_limit = None
         self.percent_quality_limit = None
@@ -36,7 +36,8 @@ class MMAS(ACS):
         avg = n / 2
         p_best_n_root = exp(log(p_best) / n)
 
-        t_max = (1 / (1 - self.p)) * self.get_as_fitness(best_solution_quality)
+        t_max = (1 / (1 - self.rho)) * \
+            self.get_as_fitness(best_solution_quality)
 
         upper = t_max * (1 - p_best_n_root)
         lower = (avg - 1) * p_best_n_root
@@ -271,7 +272,7 @@ class MMAS(ACS):
                     iterations_solutions.append(ant_solution)
 
                     # Update pheromones matrix with local update
-                    if self.pheromones_local_update and \
+                    if self.pheromones_online_update and \
                             len(ant_solution['routes']) == self.k_optimal:
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones,
@@ -369,7 +370,7 @@ class MMAS(ACS):
                         self.matrix_pheromones,
                         iteration_best_solution['routes_arcs'],
                         iteration_best_solution['cost'],
-                        self.p)
+                        self.rho)
                 else:
                     self.matrix_pheromones = self.add_pheromones_to_matrix(
                         self.matrix_pheromones,
