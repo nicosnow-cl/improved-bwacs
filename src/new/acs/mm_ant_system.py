@@ -3,7 +3,6 @@ from tqdm import tqdm
 from typing import List, Tuple
 import numpy as np
 import time
-from random import random
 
 from ..ants import AntSolution
 from .ant_colony_system import ACS
@@ -20,24 +19,36 @@ class MMAS(ACS):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.delta = 0.02
-        self.rho = 0.02
-        self.p_best = 0.05
+        self.delta = 0.5
+        self.p_best = 0.005
         self.percent_arcs_limit = None
         self.percent_quality_limit = None
+        self.rho = 0.8
+        self.evaporation_rate = self.rho
+        self.type_pheromones_update = "pseudo_g_best"
 
         self.__dict__.update(kwargs)
 
-    def get_mmas_t_max_and_t_min(self,
-                                 p_best: float,
-                                 best_solution_quality: float) \
-            -> Tuple[float, float]:
+    def print_intance_parameters(self):
+        super().print_intance_parameters()
+
+        print("----------------------------------------")
+        print("MMAS:")
+        print("\tdelta:", self.delta)
+        print("\tp_best:", self.p_best)
+        print("\tpercent_arcs_limit:", self.percent_arcs_limit)
+        print("\tpercent_quality_limit:", self.percent_quality_limit)
+
+    def get_mmas_t_max_and_t_min(
+        self, p_best: float, best_solution_quality: float
+    ) -> Tuple[float, float]:
         n = len(self.nodes)
         avg = n / 2
         p_best_n_root = exp(log(p_best) / n)
 
-        t_max = (1 / (1 - self.rho)) * \
-            self.get_as_fitness(best_solution_quality)
+        t_max = (1 / (1 - self.rho)) * self.get_as_fitness(
+            best_solution_quality
+        )
 
         upper = t_max * (1 - p_best_n_root)
         lower = (avg - 1) * p_best_n_root
@@ -46,10 +57,30 @@ class MMAS(ACS):
 
         return t_max, t_min
 
-    def is_stagnation_reached_by_arcs(self,
-                                      it_best_solution_arcs: List[tuple],
-                                      it_worst_solution_arcs: List[tuple],
-                                      similarity_percentage: float) -> bool:
+    def mmas_add_pheromones_to_matrix(
+        self,
+        pheromones_matrix: np.ndarray,
+        solution_arcs: List[Tuple],
+        solution_quality: float,
+        factor: float = 1.0,
+    ) -> np.ndarray:
+        a = 1 / (1 - self.rho)
+        solution_fitness = self.get_as_fitness(solution_quality)
+        pheromone_amount = (a * solution_fitness) * factor
+
+        for arcs in solution_arcs:
+            for arc in arcs:
+                i, j = arc
+                pheromones_matrix[i][j] += pheromone_amount
+
+        return pheromones_matrix
+
+    def is_stagnation_reached_by_arcs(
+        self,
+        it_best_solution_arcs: List[tuple],
+        it_worst_solution_arcs: List[tuple],
+        similarity_percentage: float,
+    ) -> bool:
         """
         Determine if the algorithm has reached stagnation based of arcs on the
         current and previous best and worst solutions.
@@ -70,28 +101,32 @@ class MMAS(ACS):
         """
 
         it_best_solution_arcs_set = set(
-            get_flattened_list(it_best_solution_arcs, tuple))
+            get_flattened_list(it_best_solution_arcs, tuple)
+        )
         it_worst_solution_arcs_set = set(
-            get_flattened_list(it_worst_solution_arcs, tuple))
+            get_flattened_list(it_worst_solution_arcs, tuple)
+        )
 
-        different_tuples = it_best_solution_arcs_set & \
-            it_worst_solution_arcs_set
+        different_tuples = (
+            it_best_solution_arcs_set & it_worst_solution_arcs_set
+        )
 
         a = len(different_tuples)
         b = len(it_best_solution_arcs_set.union(it_worst_solution_arcs_set))
-        arcs_similarity = (a / b)
+        arcs_similarity = a / b
 
         return arcs_similarity >= similarity_percentage
 
-    def is_stagnation_reached_by_solutions(self,
-                                           best_actual_quality: float,
-                                           best_prev_quality: float,
-                                           worst_actual_quality: float,
-                                           actual_median: float,
-                                           prev_median: float,
-                                           similarity_percentage: float) \
-            -> bool:
-        '''
+    def is_stagnation_reached_by_solutions(
+        self,
+        best_actual_quality: float,
+        best_prev_quality: float,
+        worst_actual_quality: float,
+        actual_median: float,
+        prev_median: float,
+        similarity_percentage: float,
+    ) -> bool:
+        """
         Determine if the algorithm has reached stagnation based of solutions
         quality and median.
 
@@ -112,24 +147,26 @@ class MMAS(ACS):
             bool: True if the percentage of similarity between the current
             best and worst solutions is greater than or equal to the
             predetermined threshold for stagnation, False otherwise.
-        '''
+        """
 
         no_improvements = best_actual_quality >= best_prev_quality
 
-        quality_similarity = (best_actual_quality / worst_actual_quality)
+        quality_similarity = best_actual_quality / worst_actual_quality
         quality_similarity_reached = quality_similarity > similarity_percentage
 
         median_similarity = actual_median / prev_median
         median_similarity_reached = median_similarity > similarity_percentage
 
-        return no_improvements and quality_similarity_reached \
+        return (
+            no_improvements
+            and quality_similarity_reached
             and median_similarity_reached
+        )
 
-    def apply_pheromones_trail_smoothing(self,
-                                         pheromones_matrix: np.ndarray,
-                                         t_max: float,
-                                         delta: float) -> np.ndarray:
-        '''
+    def apply_pheromones_trail_smoothing(
+        self, pheromones_matrix: np.ndarray, t_max: float, delta: float
+    ) -> np.ndarray:
+        """
         Apply MMAX pheromones trail smoothing (PTS) to the pheromones matrix.
 
         Args:
@@ -139,7 +176,7 @@ class MMAS(ACS):
 
         Returns:
             np.ndarray: The pheromones matrix after the PTS.
-        '''
+        """
 
         shape = pheromones_matrix.shape
         for i in range(shape[0]):
@@ -151,7 +188,7 @@ class MMAS(ACS):
         return pheromones_matrix
 
     def solve(self) -> ACOSolution:
-        '''
+        """
         Solve the problem using the MAX-MIN Ant System algorithm.
 
         Args:
@@ -160,88 +197,107 @@ class MMAS(ACS):
         Returns:
             ACOSolution: A dictionary with the best-global solution,
             best-iterations solutions and statistics data to the problem.
-        '''
+        """
 
         errors = self.model_problem.validate_instance(
-            self.nodes, self.demands, self.max_capacity)
+            self.nodes, self.demands, self.max_capacity
+        )
         if errors:
             raise Exception(errors)
 
         # Starting initial matrixes
-        self.matrix_pheromones = self.create_pheromones_matrix(self.t_max)
+        self.matrix_pheromones = self.create_pheromones_matrix(
+            self.t_max, self.lst_clusters
+        )
         self.matrix_probabilities = self.create_probabilities_matrix(
             self.matrix_pheromones.copy(),
             self.matrix_heuristics.copy(),
             self.alpha,
-            self.beta)
+            self.beta,
+        )
 
         # Greedy ants to find the best initial solution
-        greedy_ant = self.model_ant(self.nodes,
-                                    self.demands,
-                                    self.matrix_probabilities,
-                                    self.matrix_costs,
-                                    self.max_capacity,
-                                    self.tare,
-                                    self.model_problem,
-                                    self.q0)
+        greedy_ant = self.model_ant(
+            self.nodes,
+            self.demands,
+            self.matrix_probabilities,
+            self.matrix_costs,
+            self.max_capacity,
+            self.tare,
+            self.model_problem,
+            self.q0,
+        )
 
         greedy_ant_best_solution: AntSolution = {
-            'cost': np.inf,
-            'routes_arcs': [],
-            'routes_costs': [],
-            'routes_loads': [],
-            'routes': []
+            "cost": np.inf,
+            "routes_arcs": [],
+            "routes_costs": [],
+            "routes_loads": [],
+            "routes": [],
         }
 
         for _ in range(self.ants_num):
             greedy_ant_solution = greedy_ant.generate_solution()
-            if greedy_ant_solution['cost'] < greedy_ant_best_solution['cost']:
+            if greedy_ant_solution["cost"] < greedy_ant_best_solution["cost"]:
                 greedy_ant_best_solution = greedy_ant_solution
 
         self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
-            self.p_best, greedy_ant_best_solution['cost'])
+            self.p_best, greedy_ant_best_solution["cost"]
+        )
         self.t_zero = self.get_as_fitness(
-            (len(self.nodes) - 1) * greedy_ant_best_solution['cost'])
+            (len(self.nodes) - 1) * greedy_ant_best_solution["cost"]
+        )
 
         # Create real pheromones matrix
         self.matrix_pheromones = self.create_pheromones_matrix(
-            self.t_max)
+            self.t_zero, self.lst_clusters
+        )
         self.matrix_probabilities = self.create_probabilities_matrix(
             self.matrix_pheromones.copy(),
             self.matrix_heuristics.copy(),
             self.alpha,
-            self.beta)
+            self.beta,
+        )
 
         # Create ants
-        ant = self.model_ant(self.nodes,
-                             self.demands,
-                             self.matrix_probabilities.copy(),
-                             self.matrix_costs,
-                             self.max_capacity,
-                             self.tare,
-                             self.model_problem,
-                             self.q0)
+        ant = self.model_ant(
+            self.nodes,
+            self.demands,
+            self.matrix_probabilities.copy(),
+            self.matrix_costs,
+            self.max_capacity,
+            self.tare,
+            self.model_problem,
+            self.q0,
+        )
 
         # Set iteration local search method
         ls_it = None
         if self.model_ls_it:
-            ls_it = self.model_ls_it(self.matrix_costs,
-                                     self.demands,
-                                     self.tare,
-                                     self.max_capacity,
-                                     self.k_optimal,
-                                     self.max_iterations,
-                                     self.model_problem)
+            ls_it = self.model_ls_it(
+                self.matrix_costs,
+                self.demands,
+                self.tare,
+                self.max_capacity,
+                self.k_optimal,
+                self.max_iterations,
+                self.model_problem,
+            )
 
         self.print_intance_parameters()
-        print('\n')
+        print("\n")
 
         # Solve parameters
         best_prev_quality = np.inf
         best_solutions = []
         candidate_nodes_weights = None
-        global_best_solution = {'cost': np.inf, 'routes_arcs': [
-        ], 'routes_costs': [], 'routes_loads': [], 'routes': []}
+        global_best_solution = {
+            "cost": np.inf,
+            "routes_arcs": [],
+            "routes_costs": [],
+            "routes_loads": [],
+            "routes": [],
+        }
         iterations_mean_costs = []
         iterations_median_costs = []
         iterations_stagnations = []
@@ -254,10 +310,11 @@ class MMAS(ACS):
         # Loop over max_iterations
         with tqdm(total=self.max_iterations) as pbar:
             for it in range(self.max_iterations):
-                pbar.set_description('Global Best -> {}'
-                                     .format('{:.5f}'.format(
-                                         global_best_solution['cost'])
-                                     ))
+                pbar.set_description(
+                    "Global Best -> {}".format(
+                        "{:.5f}".format(global_best_solution["cost"])
+                    )
+                )
                 pbar.update(1)
 
                 iterations_solutions = []
@@ -266,166 +323,244 @@ class MMAS(ACS):
                 for ant_idx in range(self.ants_num):
                     if candidate_nodes_weights:
                         ant_solution = ant.generate_solution(
-                            candidate_nodes_weights[ant_idx])
+                            candidate_nodes_weights[ant_idx]
+                        )
                     else:
                         ant_solution = ant.generate_solution()
                     iterations_solutions.append(ant_solution)
 
                     # Update pheromones matrix with local update
-                    if self.pheromones_online_update and \
-                            len(ant_solution['routes']) == self.k_optimal:
+                    if self.pheromones_online_update:
+                        # Update pheromones matrix
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones,
-                            ant_solution['routes_arcs'],
+                            ant_solution["routes_arcs"],
                             1 / self.t_zero,
-                            self.epsilon)
-                        self.matrix_pheromones = \
-                            self.evaporate_pheromones_matrix(
-                                self.matrix_pheromones,
-                                1 - self.epsilon)
+                            self.epsilon,
+                        )
 
-                        self.matrix_pheromones = \
-                            self.apply_bounds_to_pheromones_matrix(
-                                self.t_min, self.t_max)
+                        # Evaporate pheromones matrix
+                        self.matrix_pheromones = (
+                            self.evaporate_pheromones_matrix(
+                                self.matrix_pheromones, 1 - self.epsilon
+                            )
+                        )
+
+                        # Apply bounds to pheromones matrix
+                        self.apply_bounds_to_pheromones_matrix(
+                            self.t_min, self.t_max
+                        )
 
                         # Update probabilities matrix
-                        self.matrix_probabilities = \
+                        self.matrix_probabilities = (
                             self.create_probabilities_matrix(
                                 self.matrix_pheromones.copy(),
                                 self.matrix_heuristics.copy(),
                                 self.alpha,
-                                self.beta)
+                                self.beta,
+                            )
+                        )
                         ant.set_probabilities_matrix(
-                            self.matrix_probabilities.copy())
+                            self.matrix_probabilities.copy()
+                        )
 
                 # Sort solutions by fitness and filter by k_optimal
-                iterations_solutions_sorted = sorted(iterations_solutions,
-                                                     key=lambda d: d['cost'])
+                iterations_solutions_sorted = sorted(
+                    iterations_solutions, key=lambda d: d["cost"]
+                )
                 iterations_solutions_sorted_and_restricted = [
-                    solution for solution in iterations_solutions_sorted
-                    if len(solution['routes']) == self.k_optimal]
+                    solution
+                    for solution in iterations_solutions_sorted
+                    if len(solution["routes"]) == self.k_optimal
+                ]
 
                 # Select best and worst solutions and compute relative costs
-                iteration_best_solution = {'cost': np.inf, 'routes_arcs': [
-                ], 'routes_costs': [], 'routes_loads': [], 'routes': []}
+                iteration_best_solution = {
+                    "cost": np.inf,
+                    "routes_arcs": [],
+                    "routes_costs": [],
+                    "routes_loads": [],
+                    "routes": [],
+                }
                 iteration_worst_solution = iterations_solutions_sorted[-1]
                 if iterations_solutions_sorted_and_restricted:
-                    iteration_best_solution = \
+                    iteration_best_solution = (
                         iterations_solutions_sorted_and_restricted[0]
+                    )
                 else:
                     iteration_best_solution = iterations_solutions_sorted[0]
 
                 # Calculate relative costs
                 costs_median = np.median(
-                    [solution['cost'] for solution
-                     in iterations_solutions_sorted])
+                    [
+                        solution["cost"]
+                        for solution in iterations_solutions_sorted
+                    ]
+                )
                 costs_mean = np.mean(
-                    [solution['cost'] for solution
-                     in iterations_solutions_sorted])
+                    [
+                        solution["cost"]
+                        for solution in iterations_solutions_sorted
+                    ]
+                )
                 costs_std = np.std(
-                    [solution['cost'] for solution
-                     in iterations_solutions_sorted])
+                    [
+                        solution["cost"]
+                        for solution in iterations_solutions_sorted
+                    ]
+                )
 
                 # Update iteration output
                 iteration_output = [
-                    '\n\t> Iteration results: BEST({}), WORST({})'
-                    .format(iteration_best_solution['cost'],
-                            iteration_worst_solution['cost']),
-                    '\t                     MED({}), AVG({}), STD({})\n'
-                    .format(costs_median,
-                            costs_mean,
-                            costs_std)
+                    "\n\t> Iteration results: BEST({}), WORST({})".format(
+                        iteration_best_solution["cost"],
+                        iteration_worst_solution["cost"],
+                    ),
+                    "\t                    MED({}), AVG({}), STD({})\n".format(
+                        costs_median, costs_mean, costs_std
+                    ),
                 ]
 
                 # LS on best iteration solution
-                ls_it_solution = {'cost': np.inf, 'routes_arcs': [
-                ], 'routes_costs': [], 'routes_loads': [], 'routes': []}
+                ls_it_solution = {
+                    "cost": np.inf,
+                    "routes_arcs": [],
+                    "routes_costs": [],
+                    "routes_loads": [],
+                    "routes": [],
+                }
                 if ls_it:
                     ls_it_solution = ls_it.improve(
-                        iteration_best_solution['routes'], it)
-                    iteration_output[0] += ', LS({})'.format(
-                        ls_it_solution['cost'])
+                        iteration_best_solution["routes"], it
+                    )
+                    iteration_output[0] += ", LS({})".format(
+                        ls_it_solution["cost"]
+                    )
 
                 # Update global best solution if LS best solution is better
                 # or iteration best solution is better
-                if ls_it_solution['cost'] < global_best_solution['cost']:
+                if ls_it_solution["cost"] < global_best_solution["cost"]:
                     global_best_solution = ls_it_solution
 
                     # Update t_min and t_max and
                     self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
-                        self.p_best,
-                        global_best_solution['cost'])
-                elif iteration_best_solution['cost'] < \
-                        global_best_solution['cost']:
+                        self.p_best, global_best_solution["cost"]
+                    )
+                elif (
+                    iteration_best_solution["cost"]
+                    < global_best_solution["cost"]
+                ):
                     global_best_solution = iteration_best_solution
 
                     # Update t_min and t_max and
                     self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
-                        self.p_best,
-                        global_best_solution['cost'])
-
-                # Update pheromone matrix by global best or iteration best
-                if random() > it / self.max_iterations:
-                    self.matrix_pheromones = self.add_pheromones_to_matrix(
-                        self.matrix_pheromones,
-                        iteration_best_solution['routes_arcs'],
-                        iteration_best_solution['cost'],
-                        self.rho)
-                else:
-                    self.matrix_pheromones = self.add_pheromones_to_matrix(
-                        self.matrix_pheromones,
-                        global_best_solution['routes_arcs'],
-                        global_best_solution['cost'])
+                        self.p_best, global_best_solution["cost"]
+                    )
 
                 # Evaporate pheromones
                 self.matrix_pheromones = self.evaporate_pheromones_matrix(
-                    self.matrix_pheromones,
-                    self.evaporation_rate)
+                    self.matrix_pheromones, self.evaporation_rate
+                )
+
+                # Update pheromone matrix
+                if self.type_pheromones_update == "all_ants":
+                    for ant_solution in iterations_solutions:
+                        self.matrix_pheromones = (
+                            self.mmas_add_pheromones_to_matrix(
+                                self.matrix_pheromones,
+                                ant_solution["routes_arcs"],
+                                ant_solution["cost"],
+                                self.rho,
+                            )
+                        )
+                elif self.type_pheromones_update == "it_best":
+                    self.matrix_pheromones = (
+                        self.mmas_add_pheromones_to_matrix(
+                            self.matrix_pheromones,
+                            iteration_best_solution["routes_arcs"],
+                            iteration_best_solution["cost"],
+                        )
+                    )
+
+                elif self.type_pheromones_update == "g_best":
+                    self.matrix_pheromones = (
+                        self.mmas_add_pheromones_to_matrix(
+                            self.matrix_pheromones,
+                            global_best_solution["routes_arcs"],
+                            global_best_solution["cost"],
+                        )
+                    )
+                elif self.type_pheromones_update == "pseudo_g_best":
+                    if (it + 1) % 3 == 0:
+                        self.matrix_pheromones = (
+                            self.mmas_add_pheromones_to_matrix(
+                                self.matrix_pheromones,
+                                global_best_solution["routes_arcs"],
+                                global_best_solution["cost"],
+                            )
+                        )
+                    else:
+                        self.matrix_pheromones = (
+                            self.mmas_add_pheromones_to_matrix(
+                                self.matrix_pheromones,
+                                iteration_best_solution["routes_arcs"],
+                                iteration_best_solution["cost"],
+                            )
+                        )
+                else:
+                    raise Exception("Invalid pheromones update type")
 
                 # Apply PTS if stagnation is reached
-                if self.percent_arcs_limit and \
-                    self.is_stagnation_reached_by_arcs(
-                        iteration_best_solution['routes_arcs'],
-                        iteration_worst_solution['routes_arcs'],
-                        self.percent_arcs_limit):
-                    self.matrix_pheromones = \
+                if (
+                    self.percent_arcs_limit
+                    and self.is_stagnation_reached_by_arcs(
+                        iteration_best_solution["routes_arcs"],
+                        iteration_worst_solution["routes_arcs"],
+                        self.percent_arcs_limit,
+                    )
+                ):
+                    self.matrix_pheromones = (
                         self.apply_pheromones_trail_smoothing(
-                            self.matrix_pheromones,
-                            self.t_max,
-                            self.delta
+                            self.matrix_pheromones, self.t_max, self.delta
                         )
+                    )
 
-                    iteration_output.append('\t* Stagnation detected!!!')
+                    iteration_output.append("\t* Stagnation detected!!!")
                     iterations_stagnations.append(it)
-                elif self.percent_quality_limit and \
-                    self.is_stagnation_reached_by_solutions(
-                        iteration_best_solution['cost'],
+                elif (
+                    self.percent_quality_limit
+                    and self.is_stagnation_reached_by_solutions(
+                        iteration_best_solution["cost"],
                         best_prev_quality,
-                        iteration_worst_solution['cost'],
+                        iteration_worst_solution["cost"],
                         costs_median,
                         prev_median,
-                        self.percent_quality_limit):
-                    self.matrix_pheromones = \
+                        self.percent_quality_limit,
+                    )
+                ):
+                    self.matrix_pheromones = (
                         self.apply_pheromones_trail_smoothing(
-                            self.matrix_pheromones,
-                            self.t_max,
-                            self.delta
+                            self.matrix_pheromones, self.t_max, self.delta
                         )
+                    )
 
-                    iteration_output.append('\t* Stagnation detected!!!')
+                    iteration_output.append("\t* Stagnation detected!!!")
                     iterations_stagnations.append(it)
 
                 # Apply bounds to pheromones matrix
-                self.matrix_pheromones = \
-                    self.apply_bounds_to_pheromones_matrix(self.t_min,
-                                                           self.t_max)
+                self.matrix_pheromones = (
+                    self.apply_bounds_to_pheromones_matrix(
+                        self.t_min, self.t_max
+                    )
+                )
 
                 # Update probabilities matrix
                 self.matrix_probabilities = self.create_probabilities_matrix(
                     self.matrix_pheromones.copy(),
                     self.matrix_heuristics.copy(),
                     self.alpha,
-                    self.beta)
+                    self.beta,
+                )
                 ant.set_probabilities_matrix(self.matrix_probabilities.copy())
 
                 # Append iteration best solution to list of best solutions
@@ -436,14 +571,16 @@ class MMAS(ACS):
                 iterations_times.append(time.time() - start_time)
 
                 # Update best_prev_quality, best_median
-                best_prev_quality = iteration_best_solution['cost']
+                best_prev_quality = iteration_best_solution["cost"]
                 prev_median = costs_median
 
                 # Update candidate nodes weights
-                if self.type_candidate_nodes is not None \
-                        and len(best_solutions):
+                if self.type_candidate_nodes is not None and len(
+                    best_solutions
+                ):
                     candidate_nodes_weights = self.get_candidate_nodes_weight(
-                        best_solutions, self.type_candidate_nodes)
+                        best_solutions, self.type_candidate_nodes
+                    )
 
                 # Print results
                 if self.ipynb:
@@ -459,34 +596,51 @@ class MMAS(ACS):
         # Sort best solutions by fitness and filter by k_optimal
         best_solutions_set = []
         best_solutions_fitness = set()
-        for ant_solution in sorted(best_solutions, key=lambda d: d['cost']):
-            if ant_solution['cost'] not in best_solutions_fitness:
+        for ant_solution in sorted(best_solutions, key=lambda d: d["cost"]):
+            if ant_solution["cost"] not in best_solutions_fitness:
                 best_solutions_set.append(ant_solution)
-                best_solutions_fitness.add(ant_solution['cost'])
+                best_solutions_fitness.add(ant_solution["cost"])
 
-        print(f'\n-- Time elapsed: {time_elapsed} --')
+        print(f"\n-- Time elapsed: {time_elapsed} --")
         if len(iterations_stagnations):
-            print('Iterations when do PTS: {}'.format(
-                [stagnation_iteration + 1
-                 for stagnation_iteration in iterations_stagnations]))
+            print(
+                "Iterations when do PTS: {}".format(
+                    [
+                        stagnation_iteration + 1
+                        for stagnation_iteration in iterations_stagnations
+                    ]
+                )
+            )
 
-        print('\nBEST SOLUTION FOUND: {}'.format(
-            (global_best_solution['cost'],
-             global_best_solution['routes'],
-             len(global_best_solution['routes']),
-             global_best_solution['routes_loads'])))
-        print('Best 5 solutions: {}'
-              .format([(ant_solution['cost'],
-                        len(ant_solution['routes']),
-                        ant_solution['routes_loads'])
-                       for ant_solution in best_solutions_set][:5]))
+        print(
+            "\nBEST SOLUTION FOUND: {}".format(
+                (
+                    global_best_solution["cost"],
+                    global_best_solution["routes"],
+                    len(global_best_solution["routes"]),
+                    global_best_solution["routes_loads"],
+                )
+            )
+        )
+        print(
+            "Best 5 solutions: {}".format(
+                [
+                    (
+                        ant_solution["cost"],
+                        len(ant_solution["routes"]),
+                        ant_solution["routes_loads"],
+                    )
+                    for ant_solution in best_solutions_set
+                ][:5]
+            )
+        )
 
         return {
-            'best_solutions': best_solutions,
-            'global_best_solution': global_best_solution,
-            'iterations_mean_costs': iterations_mean_costs,
-            'iterations_median_costs': iterations_median_costs,
-            'iterations_std_costs': iterations_std_costs,
-            'iterations_times': iterations_times,
-            'total_time': time_elapsed
+            "best_solutions": best_solutions,
+            "global_best_solution": global_best_solution,
+            "iterations_mean_costs": iterations_mean_costs,
+            "iterations_median_costs": iterations_median_costs,
+            "iterations_std_costs": iterations_std_costs,
+            "iterations_times": iterations_times,
+            "total_time": time_elapsed,
         }
