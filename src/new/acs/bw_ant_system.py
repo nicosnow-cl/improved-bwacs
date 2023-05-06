@@ -1,3 +1,4 @@
+from copy import deepcopy
 from tqdm import tqdm
 from typing import List
 import numpy as np
@@ -19,11 +20,12 @@ class BWAS(MMAS):
 
         self.p_m = 0.2
         self.rho = 0.2
-        self.evaporation_rate = 1 - self.rho
         self.sigma = 4
         self.type_mutation = None
 
         self.__dict__.update(kwargs)
+
+        self.evaporation_rate = 1 - self.rho
 
     def print_intance_parameters(self):
         super().print_intance_parameters()
@@ -39,7 +41,7 @@ class BWAS(MMAS):
         pheromones_matrix: np.ndarray,
         gb_solution_arcs: List[np.ndarray],
         curr_worst_solution_arcs: List[np.ndarray],
-        rho: float,
+        evaporation_rate: float = None,
     ) -> np.ndarray:
         """
         Decreases the pheromone level on arcs not included in the global best
@@ -60,15 +62,22 @@ class BWAS(MMAS):
         """
 
         pheromones_matrix_copy = pheromones_matrix.copy()
-
-        global_best_solution_arcs_set = get_flattened_list(
-            gb_solution_arcs, tuple
+        ev_rate = (
+            self.evaporation_rate
+            if evaporation_rate is None
+            else evaporation_rate
         )
 
-        for route in curr_worst_solution_arcs:
-            for i, j in route:
-                if (i, j) not in global_best_solution_arcs_set:
-                    pheromones_matrix_copy[i][j] *= 1 - rho
+        gb_solution_arcs_flattened = get_flattened_list(
+            gb_solution_arcs, elem_type=tuple
+        )
+        curr_worst_solution_arcs_flattened = get_flattened_list(
+            curr_worst_solution_arcs, elem_type=tuple
+        )
+
+        for i, j in curr_worst_solution_arcs_flattened:
+            if (i, j) not in gb_solution_arcs_flattened:
+                pheromones_matrix_copy[i][j] *= ev_rate
 
         return pheromones_matrix_copy
 
@@ -294,7 +303,7 @@ class BWAS(MMAS):
 
         # Create real pheromones matrix
         self.matrix_pheromones = self.create_pheromones_matrix(
-            initial_pheromones=self.t_zero,
+            initial_pheromones=self.t_max,
             lst_clusters=self.lst_clusters,
         )
         self.matrix_probabilities = self.create_probabilities_matrix(
@@ -343,6 +352,7 @@ class BWAS(MMAS):
             "routes_loads": [],
             "routes": [],
         }
+        iterations_best_solutions = []
         iterations_mean_costs = []
         iterations_median_costs = []
         iterations_restarts = []
@@ -351,6 +361,7 @@ class BWAS(MMAS):
         outputs_to_print = []
         prev_median = np.inf
         start_time = time.time()
+        pheromones_matrices = []
 
         # Loop over max_iterations
         with tqdm(total=self.max_iterations) as pbar:
@@ -362,7 +373,8 @@ class BWAS(MMAS):
                 )
                 pbar.update(1)
 
-                iterations_solutions = []
+                pheromones_matrices.append(deepcopy(self.matrix_pheromones))
+                iteration_solutions = []
 
                 # Generate solutions for each ant and update pheromones matrix
                 for ant_idx in range(self.ants_num):
@@ -372,7 +384,7 @@ class BWAS(MMAS):
                         )
                     else:
                         ant_solution = ant.generate_solution()
-                    iterations_solutions.append(ant_solution)
+                    iteration_solutions.append(ant_solution)
 
                     # Update pheromones matrix with local update
                     if (
@@ -393,7 +405,7 @@ class BWAS(MMAS):
 
                         self.matrix_pheromones = (
                             self.apply_bounds_to_pheromones_matrix(
-                                self.t_min, self.t_max
+                                self.matrix_pheromones, self.t_min, self.t_max
                             )
                         )
 
@@ -412,7 +424,7 @@ class BWAS(MMAS):
 
                 # Sort solutions by fitness and filter by k_optimal
                 iterations_solutions_sorted: List[AntSolution] = sorted(
-                    iterations_solutions, key=lambda d: d["cost"]
+                    iteration_solutions, key=lambda d: d["cost"]
                 )
                 iterations_solutions_sorted_and_restricted = [
                     solution
@@ -435,6 +447,10 @@ class BWAS(MMAS):
                     )
                 else:
                     iteration_best_solution = iterations_solutions_sorted[0]
+
+                iterations_best_solutions.append(
+                    iteration_best_solution.copy()
+                )
 
                 # Calculate relative costs
                 costs_median = np.median(
@@ -501,65 +517,68 @@ class BWAS(MMAS):
                         (len(self.nodes) - 1) * global_best_solution["cost"]
                     )
 
-                # Evaporate pheromones
-                self.matrix_pheromones = self.evaporate_pheromones_matrix(
-                    self.matrix_pheromones, self.evaporation_rate
-                )
+                if self.type_pheromones_update:
+                    # Evaporate pheromones
+                    self.matrix_pheromones = self.evaporate_pheromones_matrix(
+                        self.matrix_pheromones, self.evaporation_rate
+                    )
 
-                # Update pheromone matrix
-                if self.type_pheromones_update == "all_ants":
-                    for ant_solution in iterations_solutions:
-                        self.matrix_pheromones = self.add_pheromones_to_matrix(
-                            self.matrix_pheromones,
-                            ant_solution["routes_arcs"],
-                            ant_solution["cost"],
-                            self.rho,
-                        )
-                elif self.type_pheromones_update == "it_best":
-                    self.matrix_pheromones = self.add_pheromones_to_matrix(
-                        self.matrix_pheromones,
-                        iteration_best_solution["routes_arcs"],
-                        iteration_best_solution["cost"],
-                    )
-                elif self.type_pheromones_update == "g_best":
-                    self.matrix_pheromones = self.add_pheromones_to_matrix(
-                        self.matrix_pheromones,
-                        global_best_solution["routes_arcs"],
-                        global_best_solution["cost"],
-                    )
-                elif self.type_pheromones_update == "pseudo_g_best":
-                    if (it + 1) % 3 == 0:
-                        self.matrix_pheromones = self.add_pheromones_to_matrix(
-                            self.matrix_pheromones,
-                            global_best_solution["routes_arcs"],
-                            global_best_solution["cost"],
-                        )
-                    else:
+                    # Update pheromone matrix
+                    if self.type_pheromones_update == "all_ants":
+                        for ant_solution in iteration_solutions:
+                            self.matrix_pheromones = (
+                                self.add_pheromones_to_matrix(
+                                    self.matrix_pheromones,
+                                    ant_solution["routes_arcs"],
+                                    ant_solution["cost"],
+                                    self.rho,
+                                )
+                            )
+                    elif self.type_pheromones_update == "it_best":
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones,
                             iteration_best_solution["routes_arcs"],
                             iteration_best_solution["cost"],
                         )
-                else:
-                    raise Exception("Invalid pheromones update type")
+                    elif self.type_pheromones_update == "g_best":
+                        self.matrix_pheromones = self.add_pheromones_to_matrix(
+                            self.matrix_pheromones,
+                            global_best_solution["routes_arcs"],
+                            global_best_solution["cost"],
+                        )
+                    elif self.type_pheromones_update == "pseudo_g_best":
+                        if (it + 1) % 5 == 0:
+                            self.matrix_pheromones = (
+                                self.add_pheromones_to_matrix(
+                                    self.matrix_pheromones,
+                                    global_best_solution["routes_arcs"],
+                                    global_best_solution["cost"],
+                                )
+                            )
+                        else:
+                            self.matrix_pheromones = (
+                                self.add_pheromones_to_matrix(
+                                    self.matrix_pheromones,
+                                    iteration_best_solution["routes_arcs"],
+                                    iteration_best_solution["cost"],
+                                )
+                            )
+                    else:
+                        raise Exception("Invalid pheromones update type")
 
-                # Penalize pheromones matrix by worst solution
-                self.matrix_pheromones = self.penalize_pheromones_matrix(
-                    self.matrix_pheromones,
-                    global_best_solution["routes_arcs"],
-                    iteration_worst_solution["routes_arcs"],
-                    self.rho,
-                )
+                    # Penalize pheromones matrix by worst solution
+                    self.matrix_pheromones = self.penalize_pheromones_matrix(
+                        self.matrix_pheromones,
+                        global_best_solution["routes_arcs"],
+                        iteration_worst_solution["routes_arcs"],
+                    )
 
                 # Restart pheromones matrix if stagnation is reached
                 if self.percent_arcs_limit:
-                    restarts_avg_steps = self.get_avg_steps_between_restarts(
-                        iterations_restarts
-                    )
                     remaining_iterations = self.max_iterations - it
 
                     if (
-                        remaining_iterations >= restarts_avg_steps
+                        remaining_iterations >= 50
                         and self.is_stagnation_reached_by_arcs(
                             iteration_best_solution["routes_arcs"],
                             iteration_worst_solution["routes_arcs"],
@@ -567,20 +586,17 @@ class BWAS(MMAS):
                         )
                     ):
                         self.matrix_pheromones = self.create_pheromones_matrix(
-                            initial_pheromones=self.t_zero,
+                            initial_pheromones=self.t_max,
                             lst_clusters=self.lst_clusters,
                         )
 
                         iteration_output.append("\t* Stagnation detected!!!")
                         iterations_restarts.append(it)
                 elif self.percent_quality_limit:
-                    restarts_avg_steps = self.get_avg_steps_between_restarts(
-                        iterations_restarts
-                    )
                     remaining_iterations = self.max_iterations - it
 
                     if (
-                        remaining_iterations >= restarts_avg_steps
+                        remaining_iterations >= 50
                         and self.is_stagnation_reached_by_solutions(
                             iteration_best_solution["cost"],
                             best_prev_quality,
@@ -591,7 +607,7 @@ class BWAS(MMAS):
                         )
                     ):
                         self.matrix_pheromones = self.create_pheromones_matrix(
-                            initial_pheromones=self.t_zero,
+                            initial_pheromones=self.t_max,
                             lst_clusters=self.lst_clusters,
                         )
 
@@ -626,7 +642,7 @@ class BWAS(MMAS):
                 # Apply bounds to pheromones matrix
                 self.matrix_pheromones = (
                     self.apply_bounds_to_pheromones_matrix(
-                        self.t_min, self.t_max
+                        self.matrix_pheromones, self.t_min, self.t_max
                     )
                 )
 
@@ -712,9 +728,11 @@ class BWAS(MMAS):
         return {
             "best_solutions": best_solutions,
             "global_best_solution": global_best_solution,
+            "iterations_best_solutions": iterations_best_solutions,
             "iterations_mean_costs": iterations_mean_costs,
             "iterations_median_costs": iterations_median_costs,
             "iterations_std_costs": iterations_std_costs,
             "iterations_times": iterations_times,
+            "pheromones_matrices": pheromones_matrices,
             "total_time": time_elapsed,
         }

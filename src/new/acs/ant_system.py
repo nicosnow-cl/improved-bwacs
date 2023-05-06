@@ -43,9 +43,9 @@ class AS:
     rho: float
     t_max: float
     t_min: float
+    t_zero: float
     tare: float
     type_candidate_nodes: str
-    # 'all_ants', 'it_best', 'g_best', 'pseudo_g_best'
     type_pheromones_update: str
     type_probabilities_matrix: str
 
@@ -61,6 +61,7 @@ class AS:
         self.evaporation_rate = 1 - self.rho
         self.t_max = MAX_FLOAT
         self.t_min = MIN_FLOAT
+        self.t_zero = (self.t_max + self.t_min) / 2
         self.tare = 0
         self.type_candidate_nodes = None
         self.type_pheromones_update = "all_ants"
@@ -139,17 +140,34 @@ class AS:
                     ]
                     hull = ConvexHull(nodes_points)
                     vertexs = [cluster[vertex] for vertex in hull.vertices]
-                    arcs = list(zip(vertexs, vertexs[1:] + vertexs[:1]))
-                    total_arcs += arcs
+
+                    depot_to_nodes_arcs = list(
+                        zip([0] * len(vertexs), vertexs)
+                    )
+                    vertexs_arcs = list(
+                        zip(vertexs, vertexs[1:] + vertexs[:1])
+                    )
+                    vertex_arcs_inversed = [
+                        (arc[1], arc[0]) for arc in vertexs_arcs[::-1]
+                    ]
+
+                    total_arcs += (
+                        depot_to_nodes_arcs
+                        + vertexs_arcs
+                        + vertex_arcs_inversed
+                    )
 
             for i in range(shape):
                 for j in range(shape):
                     if (i, j) not in total_arcs:
-                        # matrix_pheromones[i][j] = \
-                        # (self.t_max + self.t_min) / 2
-                        # matrix_pheromones[i][j] = MIN_FLOAT
-                        # matrix_pheromones[i][j] *= self.rho
-                        matrix_pheromones[i][j] *= 1 - self.rho
+                        # matrix_pheromones[i][j] = self.t_min  # bad
+                        # matrix_pheromones[i][j] = self.t_zero # bad
+                        # matrix_pheromones[i][j] *= self.rho  # not too bad
+                        matrix_pheromones[i][
+                            j
+                        ] *= self.evaporation_rate  # good
+                        # matrix_pheromones[i][j] *= 0.5
+                        # matrix_pheromones[i][j] = initial_pheromones
 
             # clusters_arcs = [list(itertools.combinations(
             #     cluster, 2)) for cluster in clusters]
@@ -191,13 +209,15 @@ class AS:
             The pheromone matrix after the evaporation.
         """
 
-        pheromones_matrix *= (
+        pheromones_matrix_copy = pheromones_matrix.copy()
+
+        pheromones_matrix_copy *= (
             self.evaporation_rate
             if evaporation_rate is None
             else evaporation_rate
         )
 
-        return pheromones_matrix
+        return pheromones_matrix_copy
 
     def add_pheromones_to_matrix(
         self,
@@ -220,17 +240,21 @@ class AS:
             The pheromone matrix after the addition.
         """
 
+        pheromones_matrix_copy = pheromones_matrix.copy()
         pheromones_amount = self.get_as_fitness(solution_quality) * factor
 
         for arcs in solution_arcs:
             for arc in arcs:
                 i, j = arc
-                pheromones_matrix[i][j] += pheromones_amount
+                pheromones_matrix_copy[i][j] += pheromones_amount
 
-        return pheromones_matrix
+        return pheromones_matrix_copy
 
     def apply_bounds_to_pheromones_matrix(
-        self, t_min: float = MIN_FLOAT, t_max: float = MAX_FLOAT
+        self,
+        pheromones_matrix: np.ndarray,
+        t_min: float = MIN_FLOAT,
+        t_max: float = MAX_FLOAT,
     ) -> np.ndarray:
         """
         Applies the bounds to the pheromone matrix.
@@ -245,7 +269,7 @@ class AS:
             The pheromone matrix after the bounds application.
         """
 
-        return np.clip(self.matrix_pheromones, t_min, t_max)
+        return np.clip(pheromones_matrix, t_min, t_max)
 
     def create_probabilities_matrix(
         self,
@@ -384,7 +408,7 @@ class AS:
 
         # Starting initial matrixes
         self.matrix_pheromones = self.create_pheromones_matrix(
-            self.t_max, self.lst_clusters
+            initial_pheromones=self.t_max, lst_clusters=self.lst_clusters
         )
         self.matrix_probabilities = self.create_probabilities_matrix(
             self.matrix_pheromones.copy(),
@@ -548,14 +572,12 @@ class AS:
                     global_best_solution = iteration_best_solution
 
                 # Update pheromones matrix
-
                 if self.type_pheromones_update == "all_ants":
                     for ant_solution in iterations_solutions:
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones,
                             ant_solution["routes_arcs"],
                             ant_solution["cost"],
-                            self.rho,
                         )
                 elif self.type_pheromones_update == "it_best":
                     self.matrix_pheromones = self.add_pheromones_to_matrix(

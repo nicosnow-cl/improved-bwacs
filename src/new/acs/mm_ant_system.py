@@ -24,10 +24,11 @@ class MMAS(ACS):
         self.percent_arcs_limit = None
         self.percent_quality_limit = None
         self.rho = 0.8
-        self.evaporation_rate = self.rho
         self.type_pheromones_update = "pseudo_g_best"
 
         self.__dict__.update(kwargs)
+
+        self.evaporation_rate = self.rho
 
     def print_intance_parameters(self):
         super().print_intance_parameters()
@@ -507,8 +508,6 @@ class MMAS(ACS):
                                 iteration_best_solution["cost"],
                             )
                         )
-                else:
-                    raise Exception("Invalid pheromones update type")
 
                 # Apply PTS if stagnation is reached
                 if (
