@@ -12,9 +12,11 @@ from ..helpers import get_flattened_list
 
 class MMAS(ACS):
     delta: float
+    initial_pheromones_value: float
     p_best: float
     percent_arcs_limit: float
     percent_quality_limit: float
+    type_initial_pheromone: str
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -24,10 +26,16 @@ class MMAS(ACS):
         self.percent_arcs_limit = None
         self.percent_quality_limit = None
         self.rho = 0.8
+        self.type_initial_pheromone = "tau_max"
         self.type_pheromones_update = "pseudo_g_best"
 
         self.__dict__.update(kwargs)
 
+        self.initial_pheromones_value = (
+            self.t_max
+            if self.type_initial_pheromone == "tau_max"
+            else self.t_zero
+        )
         self.evaporation_rate = self.rho
 
     def print_intance_parameters(self):
@@ -36,9 +44,11 @@ class MMAS(ACS):
         print("----------------------------------------")
         print("MMAS:")
         print("\tdelta:", self.delta)
+        print("\tinitial_pheromones_value:", self.initial_pheromones_value)
         print("\tp_best:", self.p_best)
         print("\tpercent_arcs_limit:", self.percent_arcs_limit)
         print("\tpercent_quality_limit:", self.percent_quality_limit)
+        print("\ttype_initial_pheromone:", self.type_initial_pheromone)
 
     def get_mmas_t_max_and_t_min(
         self, p_best: float, best_solution_quality: float
@@ -65,6 +75,8 @@ class MMAS(ACS):
         solution_quality: float,
         factor: float = 1.0,
     ) -> np.ndarray:
+        pheromones_matrix_copy = pheromones_matrix.copy()
+
         a = 1 / (1 - self.rho)
         solution_fitness = self.get_as_fitness(solution_quality)
         pheromone_amount = (a * solution_fitness) * factor
@@ -72,9 +84,9 @@ class MMAS(ACS):
         for arcs in solution_arcs:
             for arc in arcs:
                 i, j = arc
-                pheromones_matrix[i][j] += pheromone_amount
+                pheromones_matrix_copy[i][j] += pheromone_amount
 
-        return pheromones_matrix
+        return pheromones_matrix_copy
 
     def is_stagnation_reached_by_arcs(
         self,
@@ -179,14 +191,16 @@ class MMAS(ACS):
             np.ndarray: The pheromones matrix after the PTS.
         """
 
+        pheromones_matrix_copy = pheromones_matrix.copy()
         shape = pheromones_matrix.shape
+
         for i in range(shape[0]):
             for j in range(shape[1]):
-                if pheromones_matrix[i][j] < t_max and i != j:
+                if pheromones_matrix_copy[i][j] < t_max and i != j:
                     smooth_value = delta * (t_max - pheromones_matrix[i][j])
-                    pheromones_matrix[i][j] += smooth_value
+                    pheromones_matrix_copy[i][j] += smooth_value
 
-        return pheromones_matrix
+        return pheromones_matrix_copy
 
     def solve(self) -> ACOSolution:
         """
@@ -242,16 +256,21 @@ class MMAS(ACS):
             if greedy_ant_solution["cost"] < greedy_ant_best_solution["cost"]:
                 greedy_ant_best_solution = greedy_ant_solution
 
-        self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
-            self.p_best, greedy_ant_best_solution["cost"]
-        )
         self.t_zero = self.get_as_fitness(
             (len(self.nodes) - 1) * greedy_ant_best_solution["cost"]
         )
 
+        if self.type_initial_pheromone == "tau_zero":
+            self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
+                self.p_best, greedy_ant_best_solution["cost"]
+            )
+
+            self.initial_pheromones_value = self.t_zero
+
         # Create real pheromones matrix
         self.matrix_pheromones = self.create_pheromones_matrix(
-            self.t_zero, self.lst_clusters
+            initial_pheromones=self.initial_pheromones_value,
+            lst_clusters=self.lst_clusters,
         )
         self.matrix_probabilities = self.create_probabilities_matrix(
             self.matrix_pheromones.copy(),
@@ -348,8 +367,10 @@ class MMAS(ACS):
                         )
 
                         # Apply bounds to pheromones matrix
-                        self.apply_bounds_to_pheromones_matrix(
-                            self.t_min, self.t_max
+                        self.matrix_pheromones = (
+                            self.apply_bounds_to_pheromones_matrix(
+                                self.matrix_pheromones, self.t_min, self.t_max
+                            )
                         )
 
                         # Update probabilities matrix
@@ -447,6 +468,10 @@ class MMAS(ACS):
                     self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
                         self.p_best, global_best_solution["cost"]
                     )
+
+                    self.t_zero = self.get_as_fitness(
+                        (len(self.nodes) - 1) * global_best_solution["cost"]
+                    )
                 elif (
                     iteration_best_solution["cost"]
                     < global_best_solution["cost"]
@@ -456,6 +481,10 @@ class MMAS(ACS):
                     # Update t_min and t_max and
                     self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
                         self.p_best, global_best_solution["cost"]
+                    )
+
+                    self.t_zero = self.get_as_fitness(
+                        (len(self.nodes) - 1) * global_best_solution["cost"]
                     )
 
                 # Evaporate pheromones
@@ -492,12 +521,13 @@ class MMAS(ACS):
                         )
                     )
                 elif self.type_pheromones_update == "pseudo_g_best":
-                    if (it + 1) % 3 == 0:
+                    if (it + 1) % 5 == 0:
                         self.matrix_pheromones = (
                             self.mmas_add_pheromones_to_matrix(
                                 self.matrix_pheromones,
                                 global_best_solution["routes_arcs"],
                                 global_best_solution["cost"],
+                                self.evaporation_rate,
                             )
                         )
                     else:
@@ -510,22 +540,25 @@ class MMAS(ACS):
                         )
 
                 # Apply PTS if stagnation is reached
-                if (
-                    self.percent_arcs_limit
-                    and self.is_stagnation_reached_by_arcs(
-                        iteration_best_solution["routes_arcs"],
-                        iteration_worst_solution["routes_arcs"],
-                        self.percent_arcs_limit,
-                    )
-                ):
-                    self.matrix_pheromones = (
-                        self.apply_pheromones_trail_smoothing(
-                            self.matrix_pheromones, self.t_max, self.delta
-                        )
-                    )
+                if self.percent_arcs_limit:
+                    remaining_iterations = self.max_iterations - it
 
-                    iteration_output.append("\t* Stagnation detected!!!")
-                    iterations_stagnations.append(it)
+                    if (
+                        remaining_iterations >= 50
+                        and self.is_stagnation_reached_by_arcs(
+                            iteration_best_solution["routes_arcs"],
+                            iteration_worst_solution["routes_arcs"],
+                            self.percent_arcs_limit,
+                        )
+                    ):
+                        self.matrix_pheromones = (
+                            self.apply_pheromones_trail_smoothing(
+                                self.matrix_pheromones, self.t_max, self.delta
+                            )
+                        )
+
+                        iteration_output.append("\t* Stagnation detected!!!")
+                        iterations_stagnations.append(it)
                 elif (
                     self.percent_quality_limit
                     and self.is_stagnation_reached_by_solutions(
@@ -549,7 +582,7 @@ class MMAS(ACS):
                 # Apply bounds to pheromones matrix
                 self.matrix_pheromones = (
                     self.apply_bounds_to_pheromones_matrix(
-                        self.t_min, self.t_max
+                        self.matrix_pheromones, self.t_min, self.t_max
                     )
                 )
 

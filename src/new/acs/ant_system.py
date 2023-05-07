@@ -100,6 +100,7 @@ class AS:
         print("\trho:", self.rho)
         print("\tt_max: {:.50f}".format(self.t_max))
         print("\tt_min: {:.50f}".format(self.t_min))
+        print("\tt_zero: {:.50f}".format(self.t_zero))
         print("\ttare:", self.tare)
         print("\ttype_candidate_nodes:", self.type_candidate_nodes)
         print("\ttype_pheromones_update:", self.type_pheromones_update)
@@ -163,10 +164,10 @@ class AS:
                         # matrix_pheromones[i][j] = self.t_min  # bad
                         # matrix_pheromones[i][j] = self.t_zero # bad
                         # matrix_pheromones[i][j] *= self.rho  # not too bad
+                        # matrix_pheromones[i][j] *= 0.5
                         matrix_pheromones[i][
                             j
                         ] *= self.evaporation_rate  # good
-                        # matrix_pheromones[i][j] *= 0.5
                         # matrix_pheromones[i][j] = initial_pheromones
 
             # clusters_arcs = [list(itertools.combinations(
