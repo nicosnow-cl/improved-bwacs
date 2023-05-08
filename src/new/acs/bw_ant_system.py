@@ -170,7 +170,7 @@ class BWAS(MMAS):
         t_threshold = self.get_t_threshold(
             pheromones_matrix_copy, solution_arcs
         )
-        mutation_value = (mutation_intensity * t_threshold) * 0.000001
+        mutation_value = (mutation_intensity * t_threshold) * 0.00001
 
         # # Use triu_indices to get upper triangle indices
         # iu = np.triu_indices(pheromones_matrix_copy.shape[0], k=1)
@@ -348,6 +348,19 @@ class BWAS(MMAS):
             self.q0,
         )
 
+        # Set all ants solutions local search method
+        ls_solutions = None
+        if self.model_ls_solutions:
+            ls_solutions = self.model_ls_solutions(
+                self.matrix_costs,
+                self.demands,
+                self.tare,
+                self.max_capacity,
+                self.k_optimal,
+                self.max_iterations,
+                self.model_problem,
+            )
+
         # Set iteration local search method
         ls_it = None
         if self.model_ls_it:
@@ -444,6 +457,18 @@ class BWAS(MMAS):
                         ant.set_probabilities_matrix(
                             self.matrix_probabilities.copy()
                         )
+
+                # LS on all ant solutions
+                if ls_solutions:
+                    improved_solutions = []
+
+                    for solution in iteration_solutions:
+                        improved_solution = ls_solutions.improve(
+                            solution["routes"], it
+                        )
+                        improved_solutions.append(improved_solution)
+
+                    iteration_solutions = improved_solutions[:]
 
                 # Sort solutions by fitness and filter by k_optimal
                 iterations_solutions_sorted: List[AntSolution] = sorted(
@@ -633,7 +658,21 @@ class BWAS(MMAS):
                         )
 
                 # Restart pheromones matrix if stagnation is reached
-                if self.percent_arcs_limit:
+                if self.restart_after_iterations:
+                    remaining_iterations = self.max_iterations - it
+
+                    if (
+                        (it + 1) % self.restart_after_iterations == 0
+                        and remaining_iterations >= 50
+                    ):
+                        self.matrix_pheromones = self.create_pheromones_matrix(
+                            initial_pheromones=self.initial_pheromones_value,
+                            lst_clusters=self.lst_clusters,
+                        )
+
+                        iteration_output.append("\t* Stagnation detected!!!")
+                        iterations_restarts.append(it)
+                elif self.percent_arcs_limit:
                     remaining_iterations = self.max_iterations - it
 
                     if (

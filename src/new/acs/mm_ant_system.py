@@ -1,4 +1,4 @@
-from math import exp, log
+from math import ceil, exp, log
 from tqdm import tqdm
 from typing import List, Tuple
 import numpy as np
@@ -15,7 +15,9 @@ class MMAS(ACS):
     initial_pheromones_value: float
     p_best: float
     percent_arcs_limit: float
+    percent_iterations_restart: float
     percent_quality_limit: float
+    restart_after_iterations: int
     type_initial_pheromone: str
 
     def __init__(self, **kwargs):
@@ -24,6 +26,7 @@ class MMAS(ACS):
         self.delta = 0.5
         self.p_best = 0.005
         self.percent_arcs_limit = None
+        self.percent_iterations_restart = None
         self.percent_quality_limit = None
         self.rho = 0.8
         self.type_initial_pheromone = "tau_max"
@@ -31,12 +34,17 @@ class MMAS(ACS):
 
         self.__dict__.update(kwargs)
 
+        self.evaporation_rate = self.rho
         self.initial_pheromones_value = (
             self.t_max
             if self.type_initial_pheromone == "tau_max"
             else self.t_zero
         )
-        self.evaporation_rate = self.rho
+        self.restart_after_iterations = (
+            ceil(self.max_iterations * self.percent_iterations_restart)
+            if self.percent_iterations_restart
+            else None
+        )
 
     def print_intance_parameters(self):
         super().print_intance_parameters()
@@ -540,7 +548,17 @@ class MMAS(ACS):
                         )
 
                 # Apply PTS if stagnation is reached
-                if self.percent_arcs_limit:
+                if self.restart_after_iterations:
+                    if it % self.restart_after_iterations == 0:
+                        self.matrix_pheromones = (
+                            self.apply_pheromones_trail_smoothing(
+                                self.matrix_pheromones, self.t_max, self.delta
+                            )
+                        )
+
+                        iteration_output.append("\t* Stagnation detected!!!")
+                        iterations_stagnations.append(it)
+                elif self.percent_arcs_limit:
                     remaining_iterations = self.max_iterations - it
 
                     if (

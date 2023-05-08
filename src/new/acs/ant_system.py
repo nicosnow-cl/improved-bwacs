@@ -38,6 +38,7 @@ class AS:
     max_iterations: int
     model_ant: Any
     model_ls_it: Any
+    model_ls_solutions: Any
     model_problem: ProblemModel
     nodes: List[int]
     rho: float
@@ -57,6 +58,7 @@ class AS:
         self.matrix_coords = None
         self.max_iterations = 300
         self.model_ls_it = None
+        self.model_ls_solutions = None
         self.rho = 0.2
         self.evaporation_rate = 1 - self.rho
         self.t_max = MAX_FLOAT
@@ -339,24 +341,52 @@ class AS:
         else:
             all_clients = self.nodes[1:][:]
             costs = self.matrix_costs[0][all_clients]
-            best_nodes = costs.argsort()[: ceil(len(all_clients) / 1.5)]
+            best_nodes = list(costs.argsort()[: ceil(len(all_clients) / 2)])
+            best_clusters_nodes = set()
+
+            if self.lst_clusters:
+                for clusters in self.lst_clusters:
+                    for cluster in clusters:
+                        nodes_num = ceil(len(cluster) * 0.3)
+                        cluster_nodes_sorted = sorted(
+                            cluster, key=lambda x: self.matrix_costs[0][x]
+                        )
+                        best_clusters_nodes.update(
+                            cluster_nodes_sorted[:nodes_num]
+                        )
+
             not_selected_yet = set(all_clients).difference(best_nodes)
+            not_selected_yet = not_selected_yet.difference(best_clusters_nodes)
             random_nodes = set(random.sample(not_selected_yet, self.k_optimal))
+            best_clusters_nodes = [
+                x - 1 for x in best_clusters_nodes
+            ]  # TODO: change KMEANS algorithm to work with real indexes
 
             def get_ranking(node):
-                if node in best_nodes:
-                    idx_in_best_nodes = np.where(best_nodes == node)[0][0]
+                if node == 0:
+                    return 0.0
+                elif node in best_clusters_nodes:
+                    idx_in_best_clusters_nodes = best_clusters_nodes.index(
+                        node
+                    )
 
                     return min(
                         1.0,
-                        random.uniform(0.7, 0.85)
+                        random.uniform(0.75, 0.85)
+                        + (1 / (1 + idx_in_best_clusters_nodes)),
+                    )
+                elif node in best_nodes:
+                    idx_in_best_nodes = best_nodes.index(node)
+
+                    return min(
+                        1.0,
+                        random.uniform(0.65, 0.85)
                         + (1 / (1 + idx_in_best_nodes)),
                     )
-
                 elif node in random_nodes:
-                    return random.uniform(0.65, 0.9)
+                    return random.uniform(0.5, 0.9)
                 else:
-                    return random.uniform(0.0, 0.55)
+                    return 0.0
 
             ants_weights = []
             for _ in range(self.ants_num):
