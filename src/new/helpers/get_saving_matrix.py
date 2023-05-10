@@ -11,8 +11,8 @@ def get_saving_matrix(depot, nodes, matrix_distances):
     shape = matrix_distances.shape
     saving_matrix = np.zeros(shape)
 
-    for i in nodes[depot_idx + 1:]:
-        for j in nodes[depot_idx + 1:]:
+    for i in nodes[(depot_idx + 1) :]:
+        for j in nodes[(depot_idx + 1) :]:
             if i != j:
                 s_i0 = matrix_distances[i][depot]
                 s_0j = matrix_distances[depot][j]
@@ -34,22 +34,19 @@ def get_saving_matrix(depot, nodes, matrix_distances):
 
     return saving_matrix
 
+
 # (Benito Quintanilla, 2015)
 
 
-def get_saving_matrix_2015(depot,
-                           nodes,
-                           demands,
-                           matrix_distances,
-                           lamb=2,
-                           mu=1,
-                           nu=1):
+def get_saving_matrix_2015(
+    depot, nodes, demands, matrix_distances, lamb=2, mu=1, nu=1
+):
     depot_idx = nodes.index(depot)
     shape = matrix_distances.shape
     saving_matrix = np.zeros(shape)
 
-    for i in nodes[depot_idx + 1:]:
-        for j in nodes[depot_idx + 1:]:
+    for i in nodes[depot_idx + 1 :]:
+        for j in nodes[depot_idx + 1 :]:
             if i != j:
                 d_0i = matrix_distances[depot][i]
                 d_0j = matrix_distances[depot][j]
@@ -58,8 +55,13 @@ def get_saving_matrix_2015(depot,
                 d_j0 = matrix_distances[j][depot]
                 mean_demands = np.mean(demands)
                 utilization = (demands[i] + demands[j]) / mean_demands
-                saving = d_i0 + d_0j - (lamb * d_ij) + \
-                    (mu * abs(d_0i - d_j0)) - (nu * utilization)
+                saving = (
+                    d_i0
+                    + d_0j
+                    - (lamb * d_ij)
+                    + (mu * abs(d_0i - d_j0))
+                    - (nu * utilization)
+                )
                 saving_matrix[i][j] = saving
 
     inv_matrix_distances = get_inversed_matrix(matrix_distances)

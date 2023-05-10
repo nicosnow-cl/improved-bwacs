@@ -384,7 +384,7 @@ class AS:
                         + (1 / (1 + idx_in_best_nodes)),
                     )
                 elif node in random_nodes:
-                    return random.uniform(0.5, 0.9)
+                    return random.uniform(0.55, 0.8)
                 else:
                     return 0.0
 
