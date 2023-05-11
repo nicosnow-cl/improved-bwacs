@@ -164,7 +164,7 @@ class AS:
                 for j in range(shape):
                     if (i, j) not in total_arcs:
                         # matrix_pheromones[i][j] = self.t_min  # bad
-                        # matrix_pheromones[i][j] = self.t_zero # bad
+                        # matrix_pheromones[i][j] = self.t_zero  # bad
                         # matrix_pheromones[i][j] *= self.rho  # not too bad
                         # matrix_pheromones[i][j] *= 0.5
                         matrix_pheromones[i][
@@ -341,7 +341,8 @@ class AS:
         else:
             all_clients = self.nodes[1:][:]
             costs = self.matrix_costs[0][all_clients]
-            best_nodes = list(costs.argsort()[: ceil(len(all_clients) / 2)])
+            costs_sorted = list(costs.argsort())
+            best_nodes = costs_sorted[: ceil(len(all_clients) / 2)]
             best_clusters_nodes = set()
 
             if self.lst_clusters:
@@ -355,36 +356,29 @@ class AS:
                             cluster_nodes_sorted[:nodes_num]
                         )
 
+            best_clusters_nodes = sorted(
+                list(best_clusters_nodes),
+                key=lambda x: self.matrix_costs[0][x],
+            )
             not_selected_yet = set(all_clients).difference(best_nodes)
             not_selected_yet = not_selected_yet.difference(best_clusters_nodes)
-            random_nodes = set(random.sample(not_selected_yet, self.k_optimal))
-            best_clusters_nodes = [
-                x - 1 for x in best_clusters_nodes
-            ]  # TODO: change KMEANS algorithm to work with real indexes
+            random_nodes = random.sample(not_selected_yet, self.k_optimal)
 
             def get_ranking(node):
                 if node == 0:
                     return 0.0
-                elif node in best_clusters_nodes:
-                    idx_in_best_clusters_nodes = best_clusters_nodes.index(
-                        node
-                    )
-
-                    return min(
-                        1.0,
-                        random.uniform(0.75, 0.85)
-                        + (1 / (1 + idx_in_best_clusters_nodes)),
-                    )
                 elif node in best_nodes:
-                    idx_in_best_nodes = best_nodes.index(node)
+                    idx = best_nodes.index(node)
+                    factor = 1 / (1 + idx)
 
-                    return min(
-                        1.0,
-                        random.uniform(0.65, 0.85)
-                        + (1 / (1 + idx_in_best_nodes)),
-                    )
-                elif node in random_nodes:
-                    return random.uniform(0.55, 0.8)
+                    return random.uniform(0.5, 0.9) + factor
+                elif node in best_clusters_nodes:
+                    idx = best_clusters_nodes.index(node)
+                    factor = 1 / (1 + idx)
+
+                    return random.uniform(0.5, 0.9) + factor
+                # elif node in random_nodes:
+                #     return random.uniform(0.35, 0.55)
                 else:
                     return 0.0
 

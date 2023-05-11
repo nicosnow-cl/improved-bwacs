@@ -24,7 +24,7 @@ class MMAS(ACS):
         super().__init__(**kwargs)
 
         self.delta = 0.5
-        self.p_best = 0.005
+        self.p_best = 0.05
         self.percent_arcs_limit = None
         self.percent_iterations_restart = None
         self.percent_quality_limit = None
@@ -35,11 +35,7 @@ class MMAS(ACS):
         self.__dict__.update(kwargs)
 
         self.evaporation_rate = self.rho
-        self.initial_pheromones_value = (
-            self.t_max
-            if self.type_initial_pheromone == "tau_max"
-            else self.t_zero
-        )
+        self.initial_pheromones_value = self.t_max
         self.restart_after_iterations = (
             ceil(self.max_iterations * self.percent_iterations_restart)
             if self.percent_iterations_restart
@@ -65,7 +61,7 @@ class MMAS(ACS):
         avg = n / 2
         p_best_n_root = exp(log(p_best) / n)
 
-        t_max = (1 / (1 - self.rho)) * self.get_as_fitness(
+        t_max = (1 / (1 - self.evaporation_rate)) * self.get_as_fitness(
             best_solution_quality
         )
 
@@ -229,9 +225,7 @@ class MMAS(ACS):
             raise Exception(errors)
 
         # Starting initial matrixes
-        self.matrix_pheromones = self.create_pheromones_matrix(
-            self.t_max, self.lst_clusters
-        )
+        self.matrix_pheromones = self.create_pheromones_matrix(self.t_max)
         self.matrix_probabilities = self.create_probabilities_matrix(
             self.matrix_pheromones.copy(),
             self.matrix_heuristics.copy(),
@@ -264,16 +258,16 @@ class MMAS(ACS):
             if greedy_ant_solution["cost"] < greedy_ant_best_solution["cost"]:
                 greedy_ant_best_solution = greedy_ant_solution
 
-        self.t_zero = self.get_as_fitness(
-            (len(self.nodes) - 1) * greedy_ant_best_solution["cost"]
+        self.t_zero = self.get_as_fitness(greedy_ant_best_solution["cost"])
+
+        self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
+            self.p_best, greedy_ant_best_solution["cost"]
         )
 
         if self.type_initial_pheromone == "tau_zero":
-            self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
-                self.p_best, greedy_ant_best_solution["cost"]
-            )
-
             self.initial_pheromones_value = self.t_zero
+        else:
+            self.initial_pheromones_value = self.t_max
 
         # Create real pheromones matrix
         self.matrix_pheromones = self.create_pheromones_matrix(
@@ -472,13 +466,19 @@ class MMAS(ACS):
                 if ls_it_solution["cost"] < global_best_solution["cost"]:
                     global_best_solution = ls_it_solution
 
+                    self.t_zero = self.get_as_fitness(
+                        global_best_solution["cost"]
+                    )
+
                     # Update t_min and t_max and
                     self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
                         self.p_best, global_best_solution["cost"]
                     )
 
-                    self.t_zero = self.get_as_fitness(
-                        (len(self.nodes) - 1) * global_best_solution["cost"]
+                    self.initial_pheromones_value = (
+                        self.t_zero
+                        if self.type_initial_pheromone == "tau_zero"
+                        else self.t_max
                     )
                 elif (
                     iteration_best_solution["cost"]
@@ -486,13 +486,19 @@ class MMAS(ACS):
                 ):
                     global_best_solution = iteration_best_solution
 
+                    self.t_zero = self.get_as_fitness(
+                        global_best_solution["cost"]
+                    )
+
                     # Update t_min and t_max and
                     self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
                         self.p_best, global_best_solution["cost"]
                     )
 
-                    self.t_zero = self.get_as_fitness(
-                        (len(self.nodes) - 1) * global_best_solution["cost"]
+                    self.initial_pheromones_value = (
+                        self.t_zero
+                        if self.type_initial_pheromone == "tau_zero"
+                        else self.t_max
                     )
 
                 # Evaporate pheromones
@@ -529,14 +535,12 @@ class MMAS(ACS):
                         )
                     )
                 elif self.type_pheromones_update == "pseudo_g_best":
-                    if (it + 1) % 5 == 0:
-                        self.matrix_pheromones = (
-                            self.mmas_add_pheromones_to_matrix(
-                                self.matrix_pheromones,
-                                global_best_solution["routes_arcs"],
-                                global_best_solution["cost"],
-                                self.evaporation_rate,
-                            )
+                    if (it + 1) % 3 == 0:
+                        self.matrix_pheromones = self.mmas_add_pheromones_to_matrix(
+                            self.matrix_pheromones,
+                            global_best_solution["routes_arcs"],
+                            global_best_solution["cost"],
+                            # self.evaporation_rate,
                         )
                     else:
                         self.matrix_pheromones = (
@@ -548,8 +552,13 @@ class MMAS(ACS):
                         )
 
                 # Apply PTS if stagnation is reached
+                remaining_iterations = self.max_iterations - it
+
                 if self.restart_after_iterations:
-                    if it % self.restart_after_iterations == 0:
+                    if (
+                        (it + 1) % self.restart_after_iterations == 0
+                        and remaining_iterations >= 50
+                    ):
                         self.matrix_pheromones = (
                             self.apply_pheromones_trail_smoothing(
                                 self.matrix_pheromones, self.t_max, self.delta

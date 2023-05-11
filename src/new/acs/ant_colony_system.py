@@ -37,7 +37,6 @@ class ACS(AS):
             "yes" if self.pheromones_online_update else "no",
         )
         print("\tq0:", self.q0)
-        print("\tt_zero: {:.50f}".format(self.t_zero))
 
     def solve(self) -> ACOSolution:
         """

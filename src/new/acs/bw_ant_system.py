@@ -14,6 +14,7 @@ class BWAS(MMAS):
     p_m: float
     sigma: int
     type_mutation: str
+    type_pheromones_model: str
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -22,14 +23,10 @@ class BWAS(MMAS):
         self.rho = 0.2
         self.sigma = 4
         self.type_mutation = None
+        self.type_pheromones_model = "as"
 
         self.__dict__.update(kwargs)
 
-        self.initial_pheromones_value = (
-            self.t_max
-            if self.type_initial_pheromone == "tau_max"
-            else self.t_zero
-        )
         self.evaporation_rate = 1 - self.rho
 
     def print_intance_parameters(self):
@@ -315,15 +312,14 @@ class BWAS(MMAS):
             if greedy_ant_solution["cost"] < greedy_ant_best_solution["cost"]:
                 greedy_ant_best_solution = greedy_ant_solution
 
-        self.t_zero = self.get_as_fitness(
-            (len(self.nodes) - 1) * greedy_ant_best_solution["cost"]
-        )
+        self.t_zero = self.get_as_fitness(greedy_ant_best_solution["cost"])
 
-        if self.type_initial_pheromone == "tau_zero":
+        if self.type_pheromones_model == "mmas":
             self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
                 self.p_best, greedy_ant_best_solution["cost"]
             )
 
+        if self.type_initial_pheromone == "tau_zero":
             self.initial_pheromones_value = self.t_zero
         else:
             self.initial_pheromones_value = self.t_max
@@ -556,32 +552,38 @@ class BWAS(MMAS):
                 if ls_it_solution["cost"] < global_best_solution["cost"]:
                     global_best_solution = ls_it_solution
 
-                    if self.type_initial_pheromone == "tau_zero":
+                    self.t_zero = self.get_as_fitness(
+                        (len(self.nodes) - 1) * global_best_solution["cost"]
+                    )
+
+                    if self.type_pheromones_model == "mmas":
                         self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
                             self.p_best, global_best_solution["cost"]
                         )
 
-                        self.t_zero = self.get_as_fitness(
-                            (len(self.nodes) - 1)
-                            * global_best_solution["cost"]
-                        )
-                        self.initial_pheromones_value = self.t_zero
+                        if self.type_initial_pheromone == "tau_zero":
+                            self.initial_pheromones_value = self.t_zero
+                        else:
+                            self.initial_pheromones_value = self.t_max
                 elif (
                     iteration_best_solution["cost"]
                     < global_best_solution["cost"]
                 ):
                     global_best_solution = iteration_best_solution
 
-                    if self.type_initial_pheromone == "tau_zero":
+                    self.t_zero = self.get_as_fitness(
+                        (len(self.nodes) - 1) * global_best_solution["cost"]
+                    )
+
+                    if self.type_pheromones_model == "mmas":
                         self.t_max, self.t_min = self.get_mmas_t_max_and_t_min(
                             self.p_best, global_best_solution["cost"]
                         )
 
-                        self.t_zero = self.get_as_fitness(
-                            (len(self.nodes) - 1)
-                            * global_best_solution["cost"]
-                        )
-                        self.initial_pheromones_value = self.t_zero
+                        if self.type_initial_pheromone == "tau_zero":
+                            self.initial_pheromones_value = self.t_zero
+                        else:
+                            self.initial_pheromones_value = self.t_max
 
                 if self.type_pheromones_update:
                     # Evaporate pheromones
@@ -620,7 +622,7 @@ class BWAS(MMAS):
                             global_best_solution["cost"],
                         )
                     elif self.type_pheromones_update == "pseudo_g_best":
-                        if (it + 1) % 5 == 0:
+                        if (it + 1) % 3 == 0:
                             self.matrix_pheromones = self.add_pheromones_to_matrix(
                                 self.matrix_pheromones,
                                 global_best_solution["routes_arcs"],
@@ -747,7 +749,9 @@ class BWAS(MMAS):
                 prev_median = costs_median
 
                 # Update candidate nodes weights
-                if self.type_candidate_nodes is not None:
+                if self.type_candidate_nodes is not None and len(
+                    best_solutions
+                ):
                     candidate_nodes_weights = self.get_candidate_nodes_weight(
                         best_solutions, self.type_candidate_nodes
                     )
