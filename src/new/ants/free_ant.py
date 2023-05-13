@@ -36,19 +36,23 @@ class FreeAnt:
         self.best_start_nodes = best_start_nodes
 
     def choose_next_node(self, actual_node, valid_nodes):
-        probabilities_of_nodes = self.matrix_probabilities[actual_node][
-            valid_nodes
-        ]
-        probabilities = probabilities_of_nodes / probabilities_of_nodes.sum()
+        prob_of_nodes = self.matrix_probabilities[actual_node][valid_nodes]
 
         if self.q0 is None:
-            return random.choices(valid_nodes, probabilities, k=1)[0]
+            return random.choices(valid_nodes, weights=prob_of_nodes, k=1)[0]
 
         if random.random() <= self.q0:
-            return valid_nodes[probabilities_of_nodes.argmax()]
+            return valid_nodes[prob_of_nodes.argmax()]
         else:
+            return random.choices(valid_nodes, weights=prob_of_nodes, k=1)[0]
+
+            # probabilities = (
+            #     probabilities_of_nodes / probabilities_of_nodes.sum()
+            # )
+
             # return random.choices(valid_nodes, probabilities, k=1)[0]
-            return np.random.choice(a=valid_nodes, size=1, p=probabilities)[0]
+
+            # return np.random.choice(valid_nodes, size=1, p=probabilities)[0]
 
     def get_valid_nodes(self, unvisited_nodes, vehicle: VehicleModel):
         return [
@@ -77,9 +81,8 @@ class FreeAnt:
         vehicle: VehicleModel = {"max_capacity": self.max_capacity, "load": 0}
 
         valid_nodes = list(unvisited_nodes)
-        start_on_best_nodes = ant_best_start_nodes and actual_route == 0
 
-        if start_on_best_nodes:
+        if ant_best_start_nodes:
             np_weights = np.array(ant_best_start_nodes)
             s = valid_nodes[np_weights[valid_nodes].argmax()]
 

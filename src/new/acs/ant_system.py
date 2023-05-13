@@ -112,6 +112,7 @@ class AS:
         self,
         initial_pheromones: float = MAX_FLOAT,
         lst_clusters: List[List[List[int]]] = None,
+        curr_iteration: int = 0,
     ) -> np.ndarray:
         """
         Creates the initial matrix of pheromone trail levels.
@@ -131,6 +132,11 @@ class AS:
 
         if lst_clusters is not None:
             total_arcs = []
+
+            diff = self.t_max - self.t_zero
+            actual_t_zero = self.t_zero + (
+                diff * (curr_iteration / self.max_iterations)
+            )
 
             for clusters in lst_clusters:
                 for cluster in clusters:
@@ -167,9 +173,10 @@ class AS:
                         # matrix_pheromones[i][j] = self.t_zero  # bad
                         # matrix_pheromones[i][j] *= self.rho  # not too bad
                         # matrix_pheromones[i][j] *= 0.5
-                        matrix_pheromones[i][
-                            j
-                        ] *= self.evaporation_rate  # good
+                        # matrix_pheromones[i][
+                        #     j
+                        # ] *= self.evaporation_rate  # good
+                        matrix_pheromones[i][j] = actual_t_zero  # good
                         # matrix_pheromones[i][j] = initial_pheromones
 
             # clusters_arcs = [list(itertools.combinations(
@@ -198,7 +205,7 @@ class AS:
         return 1 / solution_cost
 
     def evaporate_pheromones_matrix(
-        self, pheromones_matrix: np.ndarray, evaporation_rate: float = None
+        self, pheromones_matrix: np.ndarray, evaporation_rate: float
     ) -> np.ndarray:
         """
         Evaporates the pheromone trail levels in the pheromone matrix.
@@ -214,10 +221,8 @@ class AS:
 
         pheromones_matrix_copy = pheromones_matrix.copy()
 
-        pheromones_matrix_copy *= (
-            self.evaporation_rate
-            if evaporation_rate is None
-            else evaporation_rate
+        pheromones_matrix_copy = np.multiply(
+            pheromones_matrix_copy, evaporation_rate
         )
 
         return pheromones_matrix_copy
@@ -248,8 +253,7 @@ class AS:
 
         for arcs in solution_arcs:
             for arc in arcs:
-                i, j = arc
-                pheromones_matrix_copy[i][j] += pheromones_amount
+                pheromones_matrix_copy[arc[0]][arc[1]] += pheromones_amount
 
         return pheromones_matrix_copy
 
@@ -272,7 +276,9 @@ class AS:
             The pheromone matrix after the bounds application.
         """
 
-        return np.clip(pheromones_matrix, t_min, t_max)
+        pheromones_matrix_copy = pheromones_matrix.copy()
+
+        return np.clip(pheromones_matrix_copy, t_min, t_max)
 
     def create_probabilities_matrix(
         self,
@@ -337,55 +343,65 @@ class AS:
         """
 
         if type == "random":
-            return [random.random() for _ in range(0, len(self.nodes))]
+            return [np.random.uniform(0.95, 1.0) for _ in self.nodes]
         else:
             all_clients = self.nodes[1:][:]
             costs = self.matrix_costs[0][all_clients]
-            costs_sorted = list(costs.argsort())
-            best_nodes = costs_sorted[: ceil(len(all_clients) / 2)]
-            best_clusters_nodes = set()
+            inv_costs = np.divide(
+                1,
+                costs,
+                out=np.zeros_like(costs),
+            )
+            prob_matrix = inv_costs / inv_costs.sum()
 
+            best_nodes = set(
+                np.random.choice(
+                    all_clients,
+                    size=ceil(len(all_clients) / 2),
+                    p=prob_matrix,
+                    replace=False,
+                )
+            )
+
+            best_clusters_nodes = set()
             if self.lst_clusters:
                 for clusters in self.lst_clusters:
                     for cluster in clusters:
                         nodes_num = ceil(len(cluster) * 0.3)
                         cluster_nodes_sorted = sorted(
-                            cluster, key=lambda x: self.matrix_costs[0][x]
+                            cluster, key=lambda x: costs[x - 1]
                         )
                         best_clusters_nodes.update(
                             cluster_nodes_sorted[:nodes_num]
                         )
 
-            best_clusters_nodes = sorted(
-                list(best_clusters_nodes),
-                key=lambda x: self.matrix_costs[0][x],
-            )
+            diff = inv_costs.max() - inv_costs.min()
+            middle = (inv_costs.min() + diff) / 2
+
             not_selected_yet = set(all_clients).difference(best_nodes)
             not_selected_yet = not_selected_yet.difference(best_clusters_nodes)
-            random_nodes = random.sample(not_selected_yet, self.k_optimal)
-
-            def get_ranking(node):
-                if node == 0:
-                    return 0.0
-                elif node in best_nodes:
-                    idx = best_nodes.index(node)
-                    factor = 1 / (1 + idx)
-
-                    return random.uniform(0.5, 0.9) + factor
-                elif node in best_clusters_nodes:
-                    idx = best_clusters_nodes.index(node)
-                    factor = 1 / (1 + idx)
-
-                    return random.uniform(0.5, 0.9) + factor
-                # elif node in random_nodes:
-                #     return random.uniform(0.35, 0.55)
-                else:
-                    return 0.0
+            random_nodes = np.random.choice(
+                list(not_selected_yet), size=self.k_optimal, replace=False
+            )
 
             ants_weights = []
             for _ in range(self.ants_num):
-                _weights = [get_ranking(node) for node in self.nodes]
-                ants_weights.append(_weights)
+
+                def get_ranking(node):
+                    if node == self.nodes[0]:
+                        return 0.0
+                    elif node in best_nodes:
+                        return inv_costs[node - 1]
+                    elif node in best_clusters_nodes:
+                        return np.random.uniform(middle, inv_costs.max())
+                    elif node in random_nodes:
+                        return np.random.uniform(inv_costs.min(), middle)
+                    else:
+                        return 0.0
+
+                weights = [get_ranking(node) for node in all_clients]
+                weights = [0] + weights
+                ants_weights.append(weights)
 
             return ants_weights
 

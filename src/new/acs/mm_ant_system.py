@@ -509,46 +509,38 @@ class MMAS(ACS):
                 # Update pheromone matrix
                 if self.type_pheromones_update == "all_ants":
                     for ant_solution in iterations_solutions:
-                        self.matrix_pheromones = (
-                            self.mmas_add_pheromones_to_matrix(
-                                self.matrix_pheromones,
-                                ant_solution["routes_arcs"],
-                                ant_solution["cost"],
-                                self.rho,
-                            )
+                        self.matrix_pheromones = self.add_pheromones_to_matrix(
+                            self.matrix_pheromones,
+                            ant_solution["routes_arcs"],
+                            ant_solution["cost"],
+                            self.rho,
                         )
                 elif self.type_pheromones_update == "it_best":
-                    self.matrix_pheromones = (
-                        self.mmas_add_pheromones_to_matrix(
-                            self.matrix_pheromones,
-                            iteration_best_solution["routes_arcs"],
-                            iteration_best_solution["cost"],
-                        )
+                    self.matrix_pheromones = self.add_pheromones_to_matrix(
+                        self.matrix_pheromones,
+                        iteration_best_solution["routes_arcs"],
+                        iteration_best_solution["cost"],
                     )
 
                 elif self.type_pheromones_update == "g_best":
-                    self.matrix_pheromones = (
-                        self.mmas_add_pheromones_to_matrix(
-                            self.matrix_pheromones,
-                            global_best_solution["routes_arcs"],
-                            global_best_solution["cost"],
-                        )
+                    self.matrix_pheromones = self.add_pheromones_to_matrix(
+                        self.matrix_pheromones,
+                        global_best_solution["routes_arcs"],
+                        global_best_solution["cost"],
                     )
                 elif self.type_pheromones_update == "pseudo_g_best":
-                    if (it + 1) % 3 == 0:
-                        self.matrix_pheromones = self.mmas_add_pheromones_to_matrix(
+                    if (it + 1) % 4 == 0:
+                        self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones,
                             global_best_solution["routes_arcs"],
                             global_best_solution["cost"],
                             # self.evaporation_rate,
                         )
                     else:
-                        self.matrix_pheromones = (
-                            self.mmas_add_pheromones_to_matrix(
-                                self.matrix_pheromones,
-                                iteration_best_solution["routes_arcs"],
-                                iteration_best_solution["cost"],
-                            )
+                        self.matrix_pheromones = self.add_pheromones_to_matrix(
+                            self.matrix_pheromones,
+                            iteration_best_solution["routes_arcs"],
+                            iteration_best_solution["cost"],
                         )
 
                 # Apply PTS if stagnation is reached

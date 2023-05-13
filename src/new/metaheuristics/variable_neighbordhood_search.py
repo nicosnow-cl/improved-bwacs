@@ -222,8 +222,8 @@ class GeneralVNS:
             actual_solution_quality = sum(actual_solution_costs)
             neighborhoods = random.choices(
                 neighborhoods_samples,
-                #    weights=(3, 3, 2),
-                weights=(5, 4, 3, 2, 1),
+                # weights=(2, 3, 2),
+                weights=(4, 5, 3, 2, 2),
                 k=self.k_number,
             )
 

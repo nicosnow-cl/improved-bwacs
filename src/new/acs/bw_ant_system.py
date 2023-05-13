@@ -292,7 +292,7 @@ class BWAS(MMAS):
             self.nodes,
             self.demands,
             self.matrix_probabilities,
-            self.matrix_costs,
+            self.matrix_costs.copy(),
             self.max_capacity,
             self.tare,
             self.model_problem,
@@ -341,7 +341,7 @@ class BWAS(MMAS):
             self.nodes,
             self.demands,
             self.matrix_probabilities.copy(),
-            self.matrix_costs,
+            self.matrix_costs.copy(),
             self.max_capacity,
             self.tare,
             self.model_problem,
@@ -352,7 +352,7 @@ class BWAS(MMAS):
         ls_solutions = None
         if self.model_ls_solutions:
             ls_solutions = self.model_ls_solutions(
-                self.matrix_costs,
+                self.matrix_costs.copy(),
                 self.demands,
                 self.tare,
                 self.max_capacity,
@@ -365,7 +365,7 @@ class BWAS(MMAS):
         ls_it = None
         if self.model_ls_it:
             ls_it = self.model_ls_it(
-                self.matrix_costs,
+                self.matrix_costs.copy(),
                 self.demands,
                 self.tare,
                 self.max_capacity,
@@ -541,7 +541,8 @@ class BWAS(MMAS):
                 }
                 if ls_it:
                     ls_it_solution = ls_it.improve(
-                        iteration_best_solution["routes"], it
+                        iteration_best_solution["routes"],
+                        self.max_iterations - it,
                     )
                     iteration_output[0] += ", LS({})".format(
                         ls_it_solution["cost"]
@@ -622,26 +623,29 @@ class BWAS(MMAS):
                             global_best_solution["cost"],
                         )
                     elif self.type_pheromones_update == "pseudo_g_best":
-                        if (it + 1) % 3 == 0:
-                            self.matrix_pheromones = self.add_pheromones_to_matrix(
-                                self.matrix_pheromones,
-                                global_best_solution["routes_arcs"],
-                                global_best_solution["cost"],
-                                # self.rho,
-                                # 1
-                                # - (
-                                #     (self.max_iterations - it)
-                                #     / self.max_iterations
-                                # ),
-                            )
-                        else:
+                        self.matrix_pheromones = self.add_pheromones_to_matrix(
+                            self.matrix_pheromones,
+                            iteration_best_solution["routes_arcs"],
+                            iteration_best_solution["cost"],
+                        )
+
+                        if (it + 1) % 5 == 0:
                             self.matrix_pheromones = (
                                 self.add_pheromones_to_matrix(
                                     self.matrix_pheromones,
-                                    iteration_best_solution["routes_arcs"],
-                                    iteration_best_solution["cost"],
+                                    global_best_solution["routes_arcs"],
+                                    global_best_solution["cost"],
+                                    max(
+                                        self.rho,
+                                        1
+                                        - (
+                                            (self.max_iterations - it)
+                                            / self.max_iterations
+                                        ),
+                                    ),
                                 )
                             )
+
                     else:
                         raise Exception("Invalid pheromones update type")
 
@@ -681,6 +685,7 @@ class BWAS(MMAS):
                         self.matrix_pheromones = self.create_pheromones_matrix(
                             initial_pheromones=self.initial_pheromones_value,
                             lst_clusters=self.lst_clusters,
+                            curr_iteration=it,
                         )
 
                         iteration_output.append("\t* Stagnation detected!!!")
@@ -697,6 +702,7 @@ class BWAS(MMAS):
                         self.matrix_pheromones = self.create_pheromones_matrix(
                             initial_pheromones=self.initial_pheromones_value,
                             lst_clusters=self.lst_clusters,
+                            curr_iteration=it,
                         )
 
                         iteration_output.append("\t* Stagnation detected!!!")
@@ -716,6 +722,7 @@ class BWAS(MMAS):
                         self.matrix_pheromones = self.create_pheromones_matrix(
                             initial_pheromones=self.initial_pheromones_value,
                             lst_clusters=self.lst_clusters,
+                            curr_iteration=it,
                         )
 
                         iteration_output.append("\t* Stagnation detected!!!")

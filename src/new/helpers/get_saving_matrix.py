@@ -7,12 +7,12 @@ from ..helpers import get_inversed_matrix
 
 
 def get_saving_matrix(depot, nodes, matrix_distances):
-    depot_idx = nodes.index(depot)
+    # depot_idx = nodes.index(depot)
     shape = matrix_distances.shape
     saving_matrix = np.zeros(shape)
 
-    for i in nodes[(depot_idx + 1) :]:
-        for j in nodes[(depot_idx + 1) :]:
+    for i in nodes[1:]:
+        for j in nodes[1:]:
             if i != j:
                 s_i0 = matrix_distances[i][depot]
                 s_0j = matrix_distances[depot][j]
@@ -28,9 +28,11 @@ def get_saving_matrix(depot, nodes, matrix_distances):
     scaler = MinMaxScaler(feature_range=(min_not_zero_value, max_value))
     saving_matrix = scaler.fit_transform(saving_matrix)
 
-    saving_matrix[0, :] = 1
-    saving_matrix[:, [0]] = 1
+    # saving_matrix[0, :] = 1
+    # saving_matrix[:, [0]] = 1
     np.fill_diagonal(saving_matrix, 1)
+    # print(inv_matrix_distances)
+    # print(saving_matrix)
 
     return saving_matrix
 
