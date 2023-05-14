@@ -11,7 +11,7 @@ def get_capacity_matrix(nodes, demands, max_capacity):
         for j in nodes:
             if i != j:
                 capacity_matrix[i][j] = (
-                    (mean_demand + demands[i]) + demands[j]
+                    demands[i] + demands[j]
                 ) / max_capacity
 
     # capacity_matrix[0, :] = 1

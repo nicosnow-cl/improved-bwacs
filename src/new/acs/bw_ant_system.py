@@ -3,6 +3,7 @@ from tqdm import tqdm
 from typing import List
 import numpy as np
 import time
+from random import random
 
 from ..ants import AntSolution
 from ..helpers import get_flattened_list
@@ -544,10 +545,17 @@ class BWAS(MMAS):
                     "routes": [],
                 }
                 if ls_it and len(iterations_restarts):
-                    ls_it_solution = ls_it.improve(
-                        deepcopy(iteration_best_solution["routes"]),
-                        0,
-                    )
+                    if random() <= 0.5:
+                        ls_it_solution = ls_it.improve(
+                            deepcopy(iteration_best_solution["routes"]),
+                            0,
+                        )
+                    else:
+                        ls_it_solution = ls_it.improve(
+                            deepcopy(global_best_solution["routes"]),
+                            it,
+                        )
+
                     iteration_output[0] += ", LS({})".format(
                         ls_it_solution["cost"]
                     )
