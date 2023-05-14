@@ -14,10 +14,12 @@ def get_saving_matrix(depot, nodes, matrix_distances):
     for i in nodes[1:]:
         for j in nodes[1:]:
             if i != j:
+                s_0i = matrix_distances[depot][i]
                 s_i0 = matrix_distances[i][depot]
                 s_0j = matrix_distances[depot][j]
                 s_ij = matrix_distances[i][j]
-                saving = (s_i0 + s_0j) - s_ij
+                s_j0 = matrix_distances[j][depot]
+                saving = (s_i0 + s_0j) - s_ij + abs(s_0i - s_j0)
                 saving_matrix[i][j] = saving
 
     inv_matrix_distances = get_inversed_matrix(matrix_distances)

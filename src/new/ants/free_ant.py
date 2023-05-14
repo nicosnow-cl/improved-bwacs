@@ -13,6 +13,8 @@ class FreeAnt:
         nodes,
         lst_demands,
         matrix_probabilities,
+        maxtrix_pheromones,
+        matrix_heuristics,
         matrix_costs,
         max_capacity,
         tare,
@@ -21,6 +23,8 @@ class FreeAnt:
     ):
         self.lst_demands = lst_demands
         self.matrix_probabilities = matrix_probabilities
+        self.matrix_pheromones = maxtrix_pheromones
+        self.matrix_heuristics = matrix_heuristics
         self.matrix_costs = matrix_costs
         self.max_capacity = max_capacity
         self.tare = tare
@@ -32,8 +36,24 @@ class FreeAnt:
     def set_probabilities_matrix(self, probabilities_matrix):
         self.matrix_probabilities = probabilities_matrix
 
+    def set_pheromones_matrix(self, pheromones_matrix):
+        self.matrix_pheromones = pheromones_matrix
+
+    def set_heuristics_matrix(self, heuristics_matrix):
+        self.matrix_heuristics = heuristics_matrix
+
     def set_best_start_nodes(self, best_start_nodes):
         self.best_start_nodes = best_start_nodes
+
+    def choose_next_node_classic(self, actual_node, valid_nodes):
+        prob_matrix = (
+            self.matrix_pheromones[actual_node][valid_nodes]
+            * self.matrix_heuristics[actual_node][valid_nodes]
+        )
+        probs = prob_matrix / prob_matrix.sum()
+
+        # return np.random.choice(valid_nodes, size=1, p=probs)[0]
+        return random.choices(valid_nodes, weights=probs, k=1)[0]
 
     def choose_next_node(self, actual_node, valid_nodes):
         prob_of_nodes = self.matrix_probabilities[actual_node][valid_nodes]
@@ -46,13 +66,11 @@ class FreeAnt:
         else:
             return random.choices(valid_nodes, weights=prob_of_nodes, k=1)[0]
 
-            # probabilities = (
-            #     probabilities_of_nodes / probabilities_of_nodes.sum()
-            # )
+            # probs = prob_of_nodes / prob_of_nodes.sum()
 
-            # return random.choices(valid_nodes, probabilities, k=1)[0]
-
-            # return np.random.choice(valid_nodes, size=1, p=probabilities)[0]
+            # return random.choices(valid_nodes, prob_of_nodes, k=1)[0]
+            # probs = 1 - prob_of_nodes
+            # return np.random.choice(valid_nodes, size=1, p=probs)[0]
 
     def get_valid_nodes(self, unvisited_nodes, vehicle: VehicleModel):
         return [
@@ -98,6 +116,7 @@ class FreeAnt:
 
         while valid_nodes:
             s = self.choose_next_node(r, valid_nodes)
+            # s = self.choose_next_node_classic(r, valid_nodes)
 
             route_cost += self.problem_model.get_cost_between_two_nodes(
                 r, s, self.matrix_costs

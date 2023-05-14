@@ -301,11 +301,13 @@ class AS:
             The probabilities matrix.
         """
 
+        pheromones_matrix_copy = pheromones_matrix.copy()
+        heuristics_matrix_copy = heuristics_matrix.copy()
+
         if self.type_probabilities_matrix == "classic":
-            return np.multiply(
-                np.power(pheromones_matrix, alpha),
-                np.power(heuristics_matrix, beta),
-            )
+            matrix = pheromones_matrix_copy**alpha * heuristics_matrix_copy
+
+            return matrix / matrix.sum()
         else:
             inv_distances_matrix = get_inversed_matrix(self.matrix_costs)
             min_not_zero_value = inv_distances_matrix[
@@ -320,12 +322,12 @@ class AS:
             scaler = MinMaxScaler(
                 feature_range=(min_not_zero_value, max_value)
             )
-            norm_matrix_pheromones = scaler.fit_transform(pheromones_matrix)
-
-            return np.multiply(
-                np.power(norm_matrix_pheromones, alpha),
-                np.power(heuristics_matrix, beta),
+            norm_matrix_pheromones = scaler.fit_transform(
+                pheromones_matrix_copy
             )
+            matrix = norm_matrix_pheromones**alpha * heuristics_matrix_copy
+
+            return matrix / matrix.sum()
 
     def get_candidate_nodes_weight(
         self, solutions: List[AntSolution], type: str = "best"
@@ -342,10 +344,28 @@ class AS:
             A list of candidate starting nodes for the ants.
         """
 
+        all_clients = self.nodes[1:][:]
+
         if type == "random":
-            return [np.random.uniform(0.95, 1.0) for _ in self.nodes]
+            ants_weights = []
+            selected_nodes = np.random.choice(
+                all_clients,
+                size=ceil(len(all_clients) / 2),
+                replace=False,
+            )
+
+            for _ in range(self.ants_num):
+                ants_weights.append(
+                    [
+                        np.random.uniform(0.95, 1.0)
+                        if node in selected_nodes
+                        else 0.0
+                        for node in self.nodes
+                    ]
+                )
+
+            return ants_weights
         else:
-            all_clients = self.nodes[1:][:]
             costs = self.matrix_costs[0][all_clients]
             inv_costs = np.divide(
                 1,
@@ -354,7 +374,7 @@ class AS:
             )
             prob_matrix = inv_costs / inv_costs.sum()
 
-            best_nodes = set(
+            closest_nodes = set(
                 np.random.choice(
                     all_clients,
                     size=ceil(len(all_clients) / 2),
@@ -362,6 +382,13 @@ class AS:
                     replace=False,
                 )
             )
+
+            best_nodes = []
+            for solution in solutions:
+                for route in solution["routes"]:
+                    best_nodes.append(route[1])
+
+            best_nodes = set(best_nodes)
 
             best_clusters_nodes = set()
             if self.lst_clusters:
@@ -376,9 +403,10 @@ class AS:
                         )
 
             diff = inv_costs.max() - inv_costs.min()
-            middle = (inv_costs.min() + diff) / 2
+            middle = (inv_costs.min() + inv_costs.max()) / 2
 
             not_selected_yet = set(all_clients).difference(best_nodes)
+            not_selected_yet = not_selected_yet.difference(closest_nodes)
             not_selected_yet = not_selected_yet.difference(best_clusters_nodes)
             random_nodes = np.random.choice(
                 list(not_selected_yet), size=self.k_optimal, replace=False
@@ -391,11 +419,17 @@ class AS:
                     if node == self.nodes[0]:
                         return 0.0
                     elif node in best_nodes:
+                        return inv_costs[node - 1] + np.random.uniform(
+                            inv_costs.min(), inv_costs.max()
+                        )
+                    elif node in closest_nodes:
                         return inv_costs[node - 1]
-                    elif node in best_clusters_nodes:
-                        return np.random.uniform(middle, inv_costs.max())
+                    # elif node in best_clusters_nodes:
+                    #     return np.random.uniform(middle, inv_costs.max())
                     elif node in random_nodes:
-                        return np.random.uniform(inv_costs.min(), middle)
+                        return np.random.uniform(
+                            inv_costs.min(), inv_costs.max()
+                        )
                     else:
                         return 0.0
 

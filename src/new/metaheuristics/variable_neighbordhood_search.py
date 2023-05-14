@@ -223,7 +223,8 @@ class GeneralVNS:
             neighborhoods = random.choices(
                 neighborhoods_samples,
                 # weights=(2, 3, 2),
-                weights=(4, 5, 3, 2, 2),
+                weights=(4, 4, 3, 2, 2),
+                # weights=(3, 3, 1),
                 k=self.k_number,
             )
 

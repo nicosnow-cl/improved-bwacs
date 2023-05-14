@@ -169,7 +169,7 @@ class BWAS(MMAS):
         t_threshold = self.get_t_threshold(
             pheromones_matrix_copy, solution_arcs
         )
-        mutation_value = (mutation_intensity * t_threshold) * 0.00001
+        mutation_value = (mutation_intensity * t_threshold) * 0.005
 
         # # Use triu_indices to get upper triangle indices
         # iu = np.triu_indices(pheromones_matrix_copy.shape[0], k=1)
@@ -289,14 +289,16 @@ class BWAS(MMAS):
 
         # Greedy ants to find the best initial solution
         greedy_ant = self.model_ant(
-            self.nodes,
-            self.demands,
-            self.matrix_probabilities,
-            self.matrix_costs.copy(),
-            self.max_capacity,
-            self.tare,
-            self.model_problem,
-            self.q0,
+            nodes=self.nodes,
+            lst_demands=self.demands,
+            matrix_probabilities=self.matrix_probabilities.copy(),
+            maxtrix_pheromones=self.matrix_pheromones.copy(),
+            matrix_heuristics=self.matrix_heuristics.copy(),
+            matrix_costs=self.matrix_costs.copy(),
+            max_capacity=self.max_capacity,
+            tare=self.tare,
+            problem_model=self.model_problem,
+            q0=self.q0,
         )
 
         greedy_ant_best_solution: AntSolution = {
@@ -338,14 +340,16 @@ class BWAS(MMAS):
 
         # Create ants
         ant = self.model_ant(
-            self.nodes,
-            self.demands,
-            self.matrix_probabilities.copy(),
-            self.matrix_costs.copy(),
-            self.max_capacity,
-            self.tare,
-            self.model_problem,
-            self.q0,
+            nodes=self.nodes,
+            lst_demands=self.demands,
+            matrix_probabilities=self.matrix_probabilities.copy(),
+            maxtrix_pheromones=self.matrix_pheromones.copy(),
+            matrix_heuristics=self.matrix_heuristics.copy(),
+            matrix_costs=self.matrix_costs.copy(),
+            max_capacity=self.max_capacity,
+            tare=self.tare,
+            problem_model=self.model_problem,
+            q0=self.q0,
         )
 
         # Set all ants solutions local search method
@@ -422,41 +426,41 @@ class BWAS(MMAS):
                         ant_solution = ant.generate_solution()
                     iteration_solutions.append(ant_solution)
 
-                    # Update pheromones matrix with local update
-                    if (
-                        self.pheromones_online_update
-                        and len(ant_solution["routes"]) == self.k_optimal
-                    ):
-                        self.matrix_pheromones = self.add_pheromones_to_matrix(
-                            self.matrix_pheromones,
-                            ant_solution["routes_arcs"],
-                            1 / self.t_zero,
-                            self.epsilon,
-                        )
-                        self.matrix_pheromones = (
-                            self.evaporate_pheromones_matrix(
-                                self.matrix_pheromones, 1 - self.epsilon
-                            )
-                        )
+                    # # Update pheromones matrix with local update
+                    # if (
+                    #     self.pheromones_online_update
+                    #     and len(ant_solution["routes"]) == self.k_optimal
+                    # ):
+                    #     self.matrix_pheromones = self.add_pheromones_to_matrix(
+                    #         self.matrix_pheromones,
+                    #         ant_solution["routes_arcs"],
+                    #         1 / self.t_zero,
+                    #         self.epsilon,
+                    #     )
+                    #     self.matrix_pheromones = (
+                    #         self.evaporate_pheromones_matrix(
+                    #             self.matrix_pheromones, 1 - self.epsilon
+                    #         )
+                    #     )
 
-                        self.matrix_pheromones = (
-                            self.apply_bounds_to_pheromones_matrix(
-                                self.matrix_pheromones, self.t_min, self.t_max
-                            )
-                        )
+                    #     self.matrix_pheromones = (
+                    #         self.apply_bounds_to_pheromones_matrix(
+                    #             self.matrix_pheromones, self.t_min, self.t_max
+                    #         )
+                    #     )
 
-                        # Update probabilities matrix
-                        self.matrix_probabilities = (
-                            self.create_probabilities_matrix(
-                                self.matrix_pheromones.copy(),
-                                self.matrix_heuristics.copy(),
-                                self.alpha,
-                                self.beta,
-                            )
-                        )
-                        ant.set_probabilities_matrix(
-                            self.matrix_probabilities.copy()
-                        )
+                    #     # Update probabilities matrix
+                    #     self.matrix_probabilities = (
+                    #         self.create_probabilities_matrix(
+                    #             self.matrix_pheromones.copy(),
+                    #             self.matrix_heuristics.copy(),
+                    #             self.alpha,
+                    #             self.beta,
+                    #         )
+                    #     )
+                    #     ant.set_probabilities_matrix(
+                    #         self.matrix_probabilities.copy()
+                    #     )
 
                 # LS on all ant solutions
                 if ls_solutions:
@@ -539,10 +543,10 @@ class BWAS(MMAS):
                     "routes_loads": [],
                     "routes": [],
                 }
-                if ls_it:
+                if ls_it and len(iterations_restarts):
                     ls_it_solution = ls_it.improve(
-                        iteration_best_solution["routes"],
-                        self.max_iterations - it,
+                        deepcopy(iteration_best_solution["routes"]),
+                        0,
                     )
                     iteration_output[0] += ", LS({})".format(
                         ls_it_solution["cost"]
@@ -554,7 +558,7 @@ class BWAS(MMAS):
                     global_best_solution = ls_it_solution
 
                     self.t_zero = self.get_as_fitness(
-                        (len(self.nodes) - 1) * global_best_solution["cost"]
+                        global_best_solution["cost"]
                     )
 
                     if self.type_pheromones_model == "mmas":
@@ -573,7 +577,7 @@ class BWAS(MMAS):
                     global_best_solution = iteration_best_solution
 
                     self.t_zero = self.get_as_fitness(
-                        (len(self.nodes) - 1) * global_best_solution["cost"]
+                        global_best_solution["cost"]
                     )
 
                     if self.type_pheromones_model == "mmas":
@@ -623,26 +627,27 @@ class BWAS(MMAS):
                             global_best_solution["cost"],
                         )
                     elif self.type_pheromones_update == "pseudo_g_best":
-                        self.matrix_pheromones = self.add_pheromones_to_matrix(
-                            self.matrix_pheromones,
-                            iteration_best_solution["routes_arcs"],
-                            iteration_best_solution["cost"],
-                        )
-
-                        if (it + 1) % 5 == 0:
+                        if (it + 1) % 3 == 0:
+                            self.matrix_pheromones = self.add_pheromones_to_matrix(
+                                self.matrix_pheromones,
+                                global_best_solution["routes_arcs"],
+                                global_best_solution["cost"],
+                                # self.rho
+                                # max(
+                                #     self.rho,
+                                #     1
+                                #     - (
+                                #         (self.max_iterations - it)
+                                #         / self.max_iterations
+                                #     ),
+                                # ),
+                            )
+                        else:
                             self.matrix_pheromones = (
                                 self.add_pheromones_to_matrix(
                                     self.matrix_pheromones,
-                                    global_best_solution["routes_arcs"],
-                                    global_best_solution["cost"],
-                                    max(
-                                        self.rho,
-                                        1
-                                        - (
-                                            (self.max_iterations - it)
-                                            / self.max_iterations
-                                        ),
-                                    ),
+                                    iteration_best_solution["routes_arcs"],
+                                    iteration_best_solution["cost"],
                                 )
                             )
 
@@ -651,30 +656,6 @@ class BWAS(MMAS):
 
                 # Apply mutation to pheromones matrix
                 remaining_iterations = self.max_iterations - it
-
-                if len(iterations_restarts) and remaining_iterations >= 50:
-                    if self.type_mutation == "arcs":
-                        self.matrix_pheromones = (
-                            self.mutate_pheromones_matrix_by_arcs(
-                                self.matrix_pheromones,
-                                global_best_solution["routes_arcs"],
-                                it,
-                                iterations_restarts[-1],
-                                self.sigma,
-                                self.p_m,
-                            )
-                        )
-                    elif self.type_mutation == "rows":
-                        self.matrix_pheromones = (
-                            self.mutate_pheromones_matrix_by_row(
-                                self.matrix_pheromones,
-                                global_best_solution["routes_arcs"],
-                                it,
-                                iterations_restarts[-1],
-                                self.sigma,
-                                self.p_m,
-                            )
-                        )
 
                 # Restart pheromones matrix if stagnation is reached
                 if self.restart_after_iterations:
@@ -687,6 +668,29 @@ class BWAS(MMAS):
                             lst_clusters=self.lst_clusters,
                             curr_iteration=it,
                         )
+
+                        if self.type_mutation == "arcs":
+                            self.matrix_pheromones = (
+                                self.mutate_pheromones_matrix_by_arcs(
+                                    self.matrix_pheromones,
+                                    global_best_solution["routes_arcs"],
+                                    it + 1,
+                                    it,
+                                    self.sigma,
+                                    self.p_m,
+                                )
+                            )
+                        elif self.type_mutation == "rows":
+                            self.matrix_pheromones = (
+                                self.mutate_pheromones_matrix_by_row(
+                                    self.matrix_pheromones,
+                                    global_best_solution["routes_arcs"],
+                                    it + 1,
+                                    it,
+                                    self.sigma,
+                                    self.p_m,
+                                )
+                            )
 
                         iteration_output.append("\t* Stagnation detected!!!")
                         iterations_restarts.append(it)
@@ -743,6 +747,8 @@ class BWAS(MMAS):
                     self.beta,
                 )
                 ant.set_probabilities_matrix(self.matrix_probabilities.copy())
+                ant.set_pheromones_matrix(self.matrix_pheromones.copy())
+                # ant.set_heuristics_matrix(self.matrix_heuristics.copy())
 
                 # Append iteration best solution to list of best solutions
                 best_solutions.append(iteration_best_solution)
@@ -760,7 +766,7 @@ class BWAS(MMAS):
                     best_solutions
                 ):
                     candidate_nodes_weights = self.get_candidate_nodes_weight(
-                        best_solutions, self.type_candidate_nodes
+                        [global_best_solution], self.type_candidate_nodes
                     )
 
                 # Print results
