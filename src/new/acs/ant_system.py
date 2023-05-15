@@ -427,9 +427,7 @@ class AS:
                     # elif node in best_clusters_nodes:
                     #     return np.random.uniform(middle, inv_costs.max())
                     elif node in random_nodes:
-                        return np.random.uniform(
-                            inv_costs.min(), inv_costs.max()
-                        )
+                        return np.random.uniform(inv_costs.min(), middle)
                     else:
                         return 0.0
 

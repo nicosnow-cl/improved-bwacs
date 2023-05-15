@@ -545,15 +545,23 @@ class BWAS(MMAS):
                     "routes": [],
                 }
                 if ls_it and len(iterations_restarts):
-                    if random() <= 0.5:
+                    # # ls_it_solution = ls_it.improve(
+                    # #     deepcopy(iteration_best_solution["routes"]),
+                    # #     deepcopy(iteration_best_solution["routes_costs"]),
+                    # # )
+                    if random() > 0.4:
                         ls_it_solution = ls_it.improve(
                             deepcopy(iteration_best_solution["routes"]),
-                            0,
+                            deepcopy(iteration_best_solution["routes_costs"]),
+                            curr_iteration=it,
+                            max_iterations=self.max_iterations,
                         )
                     else:
                         ls_it_solution = ls_it.improve(
                             deepcopy(global_best_solution["routes"]),
-                            it,
+                            deepcopy(global_best_solution["routes_costs"]),
+                            curr_iteration=it,
+                            max_iterations=self.max_iterations,
                         )
 
                     iteration_output[0] += ", LS({})".format(
@@ -650,14 +658,11 @@ class BWAS(MMAS):
                                 #     ),
                                 # ),
                             )
-                        else:
-                            self.matrix_pheromones = (
-                                self.add_pheromones_to_matrix(
-                                    self.matrix_pheromones,
-                                    iteration_best_solution["routes_arcs"],
-                                    iteration_best_solution["cost"],
-                                )
-                            )
+                        self.matrix_pheromones = self.add_pheromones_to_matrix(
+                            self.matrix_pheromones,
+                            iteration_best_solution["routes_arcs"],
+                            iteration_best_solution["cost"],
+                        )
 
                     else:
                         raise Exception("Invalid pheromones update type")

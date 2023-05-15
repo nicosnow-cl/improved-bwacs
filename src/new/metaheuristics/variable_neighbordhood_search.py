@@ -216,6 +216,7 @@ class GeneralVNS:
         start_time = time.time()
         while time.time() - start_time < max_time:
             actual_solution = shake(best_solution.copy())
+
             actual_solution_costs = self.model_problem.fitness(
                 actual_solution, self.matrix_distances
             )
@@ -223,9 +224,9 @@ class GeneralVNS:
             neighborhoods = random.choices(
                 neighborhoods_samples,
                 # weights=(2, 3, 2),
-                weights=(4, 4, 3, 2, 2),
+                weights=(2, 3, 3, 2, 1),
                 # weights=(3, 3, 1),
-                k=self.k_number,
+                k=self.k_number * 2,
             )
 
             for neighborhood in neighborhoods:
