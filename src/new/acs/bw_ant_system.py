@@ -549,7 +549,7 @@ class BWAS(MMAS):
                     # #     deepcopy(iteration_best_solution["routes"]),
                     # #     deepcopy(iteration_best_solution["routes_costs"]),
                     # # )
-                    if random() > 0.4:
+                    if random() > 0.3:
                         ls_it_solution = ls_it.improve(
                             deepcopy(iteration_best_solution["routes"]),
                             deepcopy(iteration_best_solution["routes_costs"]),
