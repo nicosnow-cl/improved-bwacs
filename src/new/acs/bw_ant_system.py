@@ -549,7 +549,7 @@ class BWAS(MMAS):
                     # #     deepcopy(iteration_best_solution["routes"]),
                     # #     deepcopy(iteration_best_solution["routes_costs"]),
                     # # )
-                    if random() > 0.3:
+                    if random() > 0.2:
                         ls_it_solution = ls_it.improve(
                             deepcopy(iteration_best_solution["routes"]),
                             deepcopy(iteration_best_solution["routes_costs"]),
@@ -643,7 +643,7 @@ class BWAS(MMAS):
                             global_best_solution["cost"],
                         )
                     elif self.type_pheromones_update == "pseudo_g_best":
-                        if (it + 1) % 3 == 0:
+                        if (it + 1) % 2 == 0:
                             self.matrix_pheromones = self.add_pheromones_to_matrix(
                                 self.matrix_pheromones,
                                 global_best_solution["routes_arcs"],

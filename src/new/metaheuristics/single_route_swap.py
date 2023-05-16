@@ -8,7 +8,7 @@ def single_route_swap(route: List[int]) -> List[int]:
 
     new_route = route[:]
 
-    if random() < 0.5:
+    if random() < 0.3:
         node_idx_1 = randint(1, len(new_route) - 2)
         node_idx_2 = randint(1, len(new_route) - 2)
 

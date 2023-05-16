@@ -12,6 +12,7 @@ from .two_routes_swap import two_routes_swap
 from .two_routes_relocate import two_routes_relocate
 from .two_routes_exchange import two_routes_exchange
 from .two_routes_swap_closest import two_routes_swap_closest
+from .two_routes_relocate_closest import two_routes_relocate_closest
 from .variable_neighbordhood_search import GeneralVNS
 from ..acs import ACOSolution
 from ..helpers import (
@@ -23,7 +24,7 @@ from ..helpers import (
 
 PERMUTATIONS_MAX_LENGTH = 6
 SAMPLES_MAX_LENGTH = 15
-BASE = 1.15
+BASE = 1.2
 
 
 class VariableNeighborhoodDescent(GeneralVNS):
@@ -66,6 +67,32 @@ class VariableNeighborhoodDescent(GeneralVNS):
             new_costs[idx] = best_cost
 
         return deepcopy(new_solution), deepcopy(new_costs)
+
+    def do_descent_one_route(
+        self,
+        initial_route: List[int],
+        initial_cost: float,
+        neighborhood_structures: List[callable] = [
+            single_route_relocate,
+            single_route_swap,
+        ],
+    ):
+        route_length = len(initial_route) - 2
+
+        if route_length <= PERMUTATIONS_MAX_LENGTH + 1:
+            best_route, best_cost = self.permutations_descent(
+                deepcopy(initial_route), initial_cost
+            )
+        else:
+            neighborhood_max_descent = int(route_length**2) * 3
+            best_route, best_cost = self.neighborhood_structures_descent(
+                deepcopy(initial_route),
+                initial_cost,
+                max_descent=neighborhood_max_descent,
+                neighborhood_structures=neighborhood_structures,
+            )
+
+        return best_route, best_cost
 
     def permutations_descent(
         self, route: List[int], cost: float, omit_inversed: bool = True
@@ -163,10 +190,11 @@ class VariableNeighborhoodDescent(GeneralVNS):
             single_route_swap,
         ],
         shake_neighborhood_structures: List[callable] = [
-            two_routes_relocate,
-            two_routes_swap_closest,
+            # two_routes_relocate,
             # two_routes_swap,
-            two_routes_exchange,
+            # two_routes_exchange,
+            two_routes_relocate_closest,
+            two_routes_swap_closest,
         ],
         curr_iteration: int = 0,
         max_iterations: int = 100,
@@ -178,7 +206,7 @@ class VariableNeighborhoodDescent(GeneralVNS):
         # tabu_list: List[List[int]] = []
 
         if not max_time:
-            max_time = max(len(self.lst_demands) * 0.001, 0.1) * (
+            max_time = max(len(self.lst_demands) * 0.0005, 0.1) * (
                 1 - ((max_iterations - curr_iteration) / max_iterations)
             )
 
@@ -195,33 +223,67 @@ class VariableNeighborhoodDescent(GeneralVNS):
                 k=shake_intensity,
             )
 
-            for shake in shakes:
-                shake_solution = shake(
+            routes_idx = None
+
+            shakes_done = 0
+            while shakes_done < shake_intensity:
+                shake = shakes[shakes_done]
+                shake_solution, is_new, routes_idx = shake(
                     solution=shake_solution[:],
                     demands=self.lst_demands,
                     distances_matrix=self.matrix_distances,
                     max_capacity=self.max_capacity,
                 )
 
+                if is_new:
+                    # print(is_new)
+                    shakes_done += 1
+
+            # for shake in shakes:
+            #     shake_solution, is_new = shake(
+            #         solution=shake_solution[:],
+            #         demands=self.lst_demands,
+            #         distances_matrix=self.matrix_distances,
+            #         max_capacity=self.max_capacity,
+            #     )
+
             shake_costs = [
                 self.model_problem.get_route_cost(route, self.matrix_distances)
                 for route in shake_solution
             ]
 
-            descent_solution, descent_costs = self.do_descent(
-                shake_solution,
-                shake_costs,
-                descent_neighborhood_structures,
-            )
+            if not routes_idx:
+                descent_solution, descent_costs = self.do_descent(
+                    shake_solution,
+                    shake_costs,
+                    descent_neighborhood_structures,
+                )
 
-            if sum(descent_costs) < sum(best_costs):
-                best_solution = descent_solution
-                best_costs = descent_costs
-                # best_quality = sum(best_costs)
-                # tabu_list = []
+                if sum(descent_costs) < sum(best_costs):
+                    best_solution = descent_solution
+                    best_costs = descent_costs
+                    # best_quality = sum(best_costs)
+                    # tabu_list = []
+            else:
+                for route_idx in routes_idx:
+                    descent_route, descent_cost = self.do_descent_one_route(
+                        shake_solution[route_idx],
+                        shake_costs[route_idx],
+                        descent_neighborhood_structures,
+                    )
+
+                    shake_solution[route_idx] = descent_route
+                    shake_costs[route_idx] = descent_cost
+
+                if sum(shake_costs) < sum(best_costs):
+                    best_solution = shake_solution
+                    best_costs = shake_costs
+                    # best_quality = sum(best_costs)
+                    # tabu_list = []
 
             count += 1
 
+        # print(count)
         # print("max_time:", max_time)
         # print("Elapsed", time.time() - start_time)
         # print("\n")

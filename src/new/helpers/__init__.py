@@ -21,3 +21,4 @@ from .get_saving_matrix import get_saving_matrix, get_saving_matrix_2015
 from .remove_element_from_list import remove_element_from_list
 from .same_line_print import same_line_print, clear_lines
 from .get_closest_nodes import get_closest_nodes
+from .get_closest_nodes_sorted import get_closest_nodes_sorted
