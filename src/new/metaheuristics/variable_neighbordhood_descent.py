@@ -1,18 +1,20 @@
 from copy import deepcopy
-from math import log
+
+# from math import log
 from typing import List
 import numpy as np
 import random
 import time
-from itertools import permutations, combinations
+from itertools import permutations
 
 from .single_route_relocate import single_route_relocate
 from .single_route_swap import single_route_swap
-from .two_routes_swap import two_routes_swap
-from .two_routes_relocate import two_routes_relocate
 from .two_routes_exchange import two_routes_exchange
-from .two_routes_swap_closest import two_routes_swap_closest
+from .two_routes_exchange_closest import two_routes_exchange_closest
+from .two_routes_relocate import two_routes_relocate
 from .two_routes_relocate_closest import two_routes_relocate_closest
+from .two_routes_swap import two_routes_swap
+from .two_routes_swap_closest import two_routes_swap_closest
 from .variable_neighbordhood_search import GeneralVNS
 from ..acs import ACOSolution
 from ..helpers import (
@@ -52,7 +54,8 @@ class VariableNeighborhoodDescent(GeneralVNS):
             #         route_length * log(route_length, BASE)
             #     )
             #     best_route, best_cost = self.random_samples_descent(
-            #         route, initial_costs[idx], max_descent=samples_max_descent
+            #         route, initial_costs[idx],
+            #         max_descent=samples_max_descent
             #     )
             else:
                 neighborhood_max_descent = int(route_length**2) * 2
@@ -190,11 +193,12 @@ class VariableNeighborhoodDescent(GeneralVNS):
             single_route_swap,
         ],
         shake_neighborhood_structures: List[callable] = [
-            # two_routes_relocate,
-            # two_routes_swap,
-            # two_routes_exchange,
+            two_routes_relocate,
+            two_routes_swap,
+            two_routes_exchange,
             two_routes_relocate_closest,
             two_routes_swap_closest,
+            two_routes_exchange_closest,
         ],
         curr_iteration: int = 0,
         max_iterations: int = 100,
@@ -283,7 +287,8 @@ class VariableNeighborhoodDescent(GeneralVNS):
 
             count += 1
 
-        # print(count)
+        # if count > 1:
+        #     print(count)
         # print("max_time:", max_time)
         # print("Elapsed", time.time() - start_time)
         # print("\n")
