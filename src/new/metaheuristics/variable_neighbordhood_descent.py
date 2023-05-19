@@ -193,9 +193,9 @@ class VariableNeighborhoodDescent(GeneralVNS):
             single_route_swap,
         ],
         shake_neighborhood_structures: List[callable] = [
-            two_routes_relocate,
-            two_routes_swap,
-            two_routes_exchange,
+            # two_routes_relocate,
+            # two_routes_swap,
+            # two_routes_exchange,
             two_routes_relocate_closest,
             two_routes_swap_closest,
             two_routes_exchange_closest,
@@ -210,7 +210,7 @@ class VariableNeighborhoodDescent(GeneralVNS):
         # tabu_list: List[List[int]] = []
 
         if not max_time:
-            max_time = max(len(self.lst_demands) * 0.0005, 0.1) * (
+            max_time = max(len(self.lst_demands) * 0.00025, 0.1) * (
                 1 - ((max_iterations - curr_iteration) / max_iterations)
             )
 
@@ -225,6 +225,7 @@ class VariableNeighborhoodDescent(GeneralVNS):
             shakes = random.choices(
                 shake_neighborhood_structures,
                 k=shake_intensity,
+                weights=(1, 2, 3),
             )
 
             routes_idx = None

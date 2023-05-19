@@ -1,3 +1,4 @@
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
 from typing import List
 import numpy as np
 
@@ -20,9 +21,22 @@ class HeuristicModel:
     metric: str = "euclidean"
     nodes: List[int] = []
     importance_capacity: float = 1.0
+    normalization: str = None
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+
+    def normalize_matrix(self, matrix: np.ndarray, normalization: str):
+        if normalization == "standard":
+            matrix = StandardScaler().fit_transform(matrix)
+        elif normalization == "minmax":
+            matrix = MinMaxScaler().fit_transform(matrix)
+        elif normalization == "robust":
+            matrix = RobustScaler().fit_transform(matrix)
+
+        np.fill_diagonal(matrix, 1.0)
+
+        return matrix
 
     def get_heuristic_matrix(self, heuristics=["distance"]) -> np.ndarray:
         for heuristic in set(heuristics):
@@ -31,6 +45,7 @@ class HeuristicModel:
                     self.nodes, self.matrix_coords, self.metric
                 )
                 norm_matrix_distances = get_inversed_matrix(matrix_distances)
+
                 parametrized_matrix = np.power(
                     norm_matrix_distances, self.importance_distances
                 )
@@ -46,14 +61,11 @@ class HeuristicModel:
                 matrix_distances = get_distances_matrix(
                     self.nodes, self.matrix_coords, self.metric
                 )
-                # matrix_savings = get_saving_matrix_2015(self.nodes[0],
-                #                                         self.nodes,
-                #                                         self.demands,
-                #                                         matrix_distances,
-                #                                         2, 1, 1)
+
                 matrix_savings = get_saving_matrix(
                     self.nodes[0], self.nodes, matrix_distances
                 )
+
                 parametrized_matrix = np.power(
                     matrix_savings, self.importance_savings
                 )
@@ -78,5 +90,10 @@ class HeuristicModel:
                     self.matrix_heuristics = np.multiply(
                         self.matrix_heuristics, parametrized_matrix
                     )
+
+        if self.normalization is not None:
+            self.matrix_heuristicss = self.normalize_matrix(
+                self.matrix_heuristics, self.normalization
+            )
 
         return self.matrix_heuristics

@@ -425,7 +425,7 @@ class BWAS(MMAS):
                 for ant_idx in range(self.ants_num):
                     if candidate_nodes_weights:
                         ant_solution = ant.generate_solution(
-                            candidate_nodes_weights[ant_idx]
+                            candidate_nodes_weights[0]
                         )
                     else:
                         ant_solution = ant.generate_solution()
@@ -573,6 +573,10 @@ class BWAS(MMAS):
                 if ls_it_solution["cost"] < global_best_solution["cost"]:
                     global_best_solution = ls_it_solution
 
+                    candidate_nodes_weights = self.get_candidate_nodes_weight(
+                        [global_best_solution], self.type_candidate_nodes
+                    )
+
                     self.t_zero = self.get_as_fitness(
                         global_best_solution["cost"]
                     )
@@ -591,6 +595,10 @@ class BWAS(MMAS):
                     < global_best_solution["cost"]
                 ):
                     global_best_solution = iteration_best_solution
+
+                    candidate_nodes_weights = self.get_candidate_nodes_weight(
+                        [global_best_solution], self.type_candidate_nodes
+                    )
 
                     self.t_zero = self.get_as_fitness(
                         global_best_solution["cost"]
@@ -666,17 +674,14 @@ class BWAS(MMAS):
                                     self.matrix_pheromones,
                                     global_best_solution["routes_arcs"],
                                     global_best_solution["cost"],
-                                    self.rho,
                                 )
                             )
 
-                            self.matrix_pheromones = (
-                                self.add_pheromones_to_matrix(
-                                    self.matrix_pheromones,
-                                    iteration_best_solution["routes_arcs"],
-                                    iteration_best_solution["cost"],
-                                )
-                            )
+                        self.matrix_pheromones = self.add_pheromones_to_matrix(
+                            self.matrix_pheromones,
+                            iteration_best_solution["routes_arcs"],
+                            iteration_best_solution["cost"],
+                        )
                     else:
                         raise Exception("Invalid pheromones update type")
 
@@ -789,13 +794,11 @@ class BWAS(MMAS):
                 best_prev_quality = iteration_best_solution["cost"]
                 prev_median = costs_median
 
-                # Update candidate nodes weights
-                if self.type_candidate_nodes is not None and len(
-                    best_solutions
-                ):
-                    candidate_nodes_weights = self.get_candidate_nodes_weight(
-                        [global_best_solution], self.type_candidate_nodes
-                    )
+                # # Update candidate nodes weights
+                # if self.type_candidate_nodes is not None and (it + 1) % 5 == 0:
+                #     candidate_nodes_weights = self.get_candidate_nodes_weight(
+                #         [global_best_solution], self.type_candidate_nodes
+                #     )
 
                 # Print results
                 if self.ipynb:
