@@ -344,20 +344,20 @@ class AS:
             A list of candidate starting nodes for the ants.
         """
 
-        all_clients = self.nodes[1:][:]
+        all_clients = self.nodes[1:]
+        half_clients_length = ceil(len(all_clients) / 2)
 
         if type == "random":
             ants_weights = []
-            selected_nodes = np.random.choice(
+            selected_nodes = random.choices(
                 all_clients,
-                size=ceil(len(all_clients) / 2),
-                replace=False,
+                k=half_clients_length,
             )
 
             for _ in range(self.ants_num):
                 ants_weights.append(
                     [
-                        np.random.uniform(0.95, 1.0)
+                        random.uniform(0.95, 1.0)
                         if node in selected_nodes
                         else 0.0
                         for node in self.nodes
@@ -367,22 +367,17 @@ class AS:
             return ants_weights
         else:
             costs = self.matrix_costs[0][all_clients]
-            inv_costs = np.divide(
-                1,
-                costs,
-                out=np.zeros_like(costs),
-            )
-            prob_matrix = (
-                inv_costs[: int(len(all_clients) / 2)]
-                / inv_costs[: int(len(all_clients) / 2)].sum()
-            )
+            inv_costs = [1 / cost if cost != 0 else 0 for cost in costs]
+            prob_matrix = [
+                inv_cost / sum(inv_costs[:half_clients_length])
+                for inv_cost in inv_costs[:half_clients_length]
+            ]
 
             closest_nodes = set(
-                np.random.choice(
-                    all_clients[: int(len(all_clients) / 2)],
-                    size=max(ceil(len(all_clients) * 0.3), 10),
-                    p=prob_matrix,
-                    replace=False,
+                random.choices(
+                    all_clients[:half_clients_length],
+                    weights=prob_matrix,
+                    k=max(ceil(len(all_clients) * 0.3), 10),
                 )
             )
 
@@ -404,26 +399,25 @@ class AS:
                         best_clusters_nodes.update(
                             cluster_nodes_sorted[:nodes_num]
                         )
-
-            middle = (inv_costs.min() + inv_costs.max()) / 2
-            diff = inv_costs.max() - inv_costs.min()
+            min_value = min(inv_costs)
+            max_value = max(inv_costs)
+            middle_value = (min_value + max_value) / 2
 
             def get_ranking(node):
                 if node == self.nodes[0]:
                     return 0.0
                 elif node in best_nodes:
-                    return inv_costs[node - 1] + np.random.uniform(
-                        middle, inv_costs.max()
+                    return inv_costs[node - 1] + random.uniform(
+                        middle_value, max_value
                     )
                 elif node in closest_nodes:
-                    return inv_costs[node - 1] + np.random.uniform(
-                        inv_costs.min(), middle
+                    return inv_costs[node - 1] + random.uniform(
+                        min_value, max_value
                     )
-                # elif node in best_clusters_nodes:
-                #     return np.random.uniform(inv_costs.min(), inv_costs.max())
+                elif node in best_clusters_nodes:
+                    return random.uniform(middle_value, max_value)
                 else:
-                    return np.random.uniform(inv_costs.min(), inv_costs.max())
-                    # return 0.0
+                    return random.uniform(min_value, max_value)
 
             return [[get_ranking(node) for node in self.nodes]]
 
