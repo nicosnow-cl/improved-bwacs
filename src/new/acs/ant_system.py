@@ -220,17 +220,14 @@ class AS:
         """
 
         pheromones_matrix_copy = pheromones_matrix.copy()
-
-        pheromones_matrix_copy = np.multiply(
-            pheromones_matrix_copy, evaporation_rate
-        )
+        pheromones_matrix_copy *= evaporation_rate
 
         return pheromones_matrix_copy
 
     def add_pheromones_to_matrix(
         self,
         pheromones_matrix: np.ndarray,
-        solution_arcs: List[Tuple],
+        solution_arcs_flatten: List[Tuple[int, int]],
         solution_quality: float,
         factor: float = 1.0,
     ) -> np.ndarray:
@@ -251,9 +248,8 @@ class AS:
         pheromones_matrix_copy = pheromones_matrix.copy()
         pheromones_amount = self.get_as_fitness(solution_quality) * factor
 
-        for arcs in solution_arcs:
-            for arc in arcs:
-                pheromones_matrix_copy[arc[0]][arc[1]] += pheromones_amount
+        for arc in solution_arcs_flatten:
+            pheromones_matrix_copy[arc] += pheromones_amount
 
         return pheromones_matrix_copy
 
@@ -276,9 +272,7 @@ class AS:
             The pheromone matrix after the bounds application.
         """
 
-        pheromones_matrix_copy = pheromones_matrix.copy()
-
-        return np.clip(pheromones_matrix_copy, t_min, t_max)
+        return np.clip(pheromones_matrix.copy(), t_min, t_max)
 
     def create_probabilities_matrix(
         self,
@@ -417,7 +411,7 @@ class AS:
                 elif node in best_clusters_nodes:
                     return random.uniform(middle_value, max_value)
                 else:
-                    return random.uniform(min_value, max_value)
+                    return random.uniform(min_value, middle_value)
 
             return [[get_ranking(node) for node in self.nodes]]
 

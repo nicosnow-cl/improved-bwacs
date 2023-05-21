@@ -94,8 +94,8 @@ class MMAS(ACS):
 
     def is_stagnation_reached_by_arcs(
         self,
-        it_best_solution_arcs: List[tuple],
-        it_worst_solution_arcs: List[tuple],
+        it_best_solution_arcs_flatten: List[Tuple[int, int]],
+        it_worst_solution_arcs_flatten: List[Tuple[int, int]],
         similarity_percentage: float,
     ) -> bool:
         """
@@ -103,10 +103,10 @@ class MMAS(ACS):
         current and previous best and worst solutions.
 
         Args:
-            it_best_solution_arcs (List[tuple]): The arcs of the current best
-            solution.
-            it_worst_solution_arcs (List[tuple]): The arcs of the current worst
-            solution.
+            it_best_solution_arcs_flatten (List[Tuple[int, int]]): The arcs of
+            the current best solution.
+            it_worst_solution_arcs_flatteen (List[Tuple[int, int]]): The arcs
+            of the current worst solution.
             similarity_percentage (float): The percentage of similarity between
             the current best and worst solutions to be considered as
             stagnation.
@@ -117,12 +117,8 @@ class MMAS(ACS):
             predetermined threshold for stagnation, False otherwise.
         """
 
-        it_best_solution_arcs_set = set(
-            get_flattened_list(it_best_solution_arcs, tuple)
-        )
-        it_worst_solution_arcs_set = set(
-            get_flattened_list(it_worst_solution_arcs, tuple)
-        )
+        it_best_solution_arcs_set = set(it_best_solution_arcs_flatten)
+        it_worst_solution_arcs_set = set(it_worst_solution_arcs_flatten)
 
         different_tuples = (
             it_best_solution_arcs_set & it_worst_solution_arcs_set

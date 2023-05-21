@@ -1,6 +1,6 @@
 from copy import deepcopy
 from tqdm import tqdm
-from typing import List
+from typing import List, Tuple
 import numpy as np
 import time
 from random import random
@@ -42,8 +42,8 @@ class BWAS(MMAS):
     def penalize_pheromones_matrix(
         self,
         pheromones_matrix: np.ndarray,
-        gb_solution_arcs: List[np.ndarray],
-        curr_worst_solution_arcs: List[np.ndarray],
+        gb_solution_arcs_flatten: List[Tuple[int, int]],
+        curr_worst_solution_arcs_flatten: List[Tuple[int, int]],
         evaporation_rate: float = None,
     ) -> np.ndarray:
         """
@@ -65,27 +65,14 @@ class BWAS(MMAS):
         """
 
         pheromones_matrix_copy = pheromones_matrix.copy()
-        ev_rate = (
-            self.evaporation_rate
-            if evaporation_rate is None
-            else evaporation_rate
-        )
 
-        gb_solution_arcs_flattened = get_flattened_list(
-            gb_solution_arcs, elem_type=tuple
-        )
-        curr_worst_solution_arcs_flattened = get_flattened_list(
-            curr_worst_solution_arcs, elem_type=tuple
-        )
-
-        gb_solution_arcs_set = set(gb_solution_arcs_flattened)
-
-        mask = np.zeros_like(pheromones_matrix_copy, dtype=bool)
-        for arc in curr_worst_solution_arcs_flattened:
-            i, j = arc
-            mask[i, j] = (i, j) not in gb_solution_arcs_set
-
-        pheromones_matrix_copy *= mask * ev_rate
+        for arc in curr_worst_solution_arcs_flatten:
+            if arc not in gb_solution_arcs_flatten:
+                pheromones_matrix_copy[arc] *= (
+                    self.evaporation_rate
+                    if evaporation_rate is None
+                    else evaporation_rate
+                )
 
         return pheromones_matrix_copy
 
@@ -144,7 +131,7 @@ class BWAS(MMAS):
     def mutate_pheromones_matrix_by_arcs(
         self,
         pheromones_matrix: np.ndarray,
-        solution_arcs: List[np.ndarray],
+        solution_arcs_flatten: List[Tuple[int, int]],
         solution_cost: float,
         current_iteration: int,
         restart_iteration: int,
@@ -177,7 +164,7 @@ class BWAS(MMAS):
             current_iteration, restart_iteration, sigma
         )
         t_threshold = self.get_t_threshold(
-            pheromones_matrix_copy, solution_arcs, solution_cost
+            pheromones_matrix_copy, solution_arcs_flatten, solution_cost
         )
         mutation_value = (mutation_intensity * t_threshold) * 0.5
 
@@ -217,7 +204,7 @@ class BWAS(MMAS):
     def get_t_threshold(
         self,
         pheromones_matrix: np.ndarray,
-        solution_arcs: List[np.ndarray],
+        solution_arcs_flatten: List[Tuple[int, int]],
         solution_cost: float,
     ) -> float:
         """
@@ -234,9 +221,7 @@ class BWAS(MMAS):
             solution.
         """
 
-        plain_arcs = np.array(get_flattened_list(solution_arcs, tuple))
-        pheromones = pheromones_matrix[plain_arcs[:, 0], plain_arcs[:, 1]]
-        pheromones = pheromones[pheromones != 0]
+        pheromones = [pheromones_matrix[arc] for arc in solution_arcs_flatten]
 
         return np.sum(pheromones) / solution_cost
 
@@ -551,6 +536,7 @@ class BWAS(MMAS):
                 ls_it_solution: AntSolution = {
                     "cost": np.inf,
                     "routes_arcs": [],
+                    "routes_arcs_flatten": [],
                     "routes_costs": [],
                     "routes_loads": [],
                     "routes": [],
@@ -633,8 +619,8 @@ class BWAS(MMAS):
                     start_time_penalize = time.time()
                     self.matrix_pheromones = self.penalize_pheromones_matrix(
                         self.matrix_pheromones,
-                        global_best_solution["routes_arcs"],
-                        iteration_worst_solution["routes_arcs"],
+                        global_best_solution["routes_arcs_flatten"],
+                        iteration_worst_solution["routes_arcs_flatten"],
                     )
                     # print("Penalize time: ", time.time() - start_time_penalize)
 
@@ -684,14 +670,16 @@ class BWAS(MMAS):
                             self.matrix_pheromones = (
                                 self.add_pheromones_to_matrix(
                                     self.matrix_pheromones,
-                                    global_best_solution["routes_arcs"],
+                                    global_best_solution[
+                                        "routes_arcs_flatten"
+                                    ],
                                     global_best_solution["cost"],
                                 )
                             )
 
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones,
-                            iteration_best_solution["routes_arcs"],
+                            iteration_best_solution["routes_arcs_flatten"],
                             iteration_best_solution["cost"],
                         )
                     else:
@@ -725,7 +713,9 @@ class BWAS(MMAS):
                             self.matrix_pheromones = (
                                 self.mutate_pheromones_matrix_by_arcs(
                                     self.matrix_pheromones,
-                                    global_best_solution["routes_arcs"],
+                                    global_best_solution[
+                                        "routes_arcs_flatten"
+                                    ],
                                     global_best_solution["cost"],
                                     it + 1,
                                     it,
@@ -737,7 +727,9 @@ class BWAS(MMAS):
                             self.matrix_pheromones = (
                                 self.mutate_pheromones_matrix_by_row(
                                     self.matrix_pheromones,
-                                    global_best_solution["routes_arcs"],
+                                    global_best_solution[
+                                        "routes_arcs_flatten"
+                                    ],
                                     global_best_solution["cost"],
                                     it + 1,
                                     it,
@@ -753,8 +745,8 @@ class BWAS(MMAS):
                     if (
                         remaining_iterations >= 50
                         and self.is_stagnation_reached_by_arcs(
-                            iteration_best_solution["routes_arcs"],
-                            iteration_worst_solution["routes_arcs"],
+                            iteration_best_solution["routes_arcs_flatten"],
+                            iteration_worst_solution["routes_arcs_flatten"],
                             self.percent_arcs_limit,
                         )
                     ):
