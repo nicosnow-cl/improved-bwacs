@@ -1,9 +1,6 @@
-from typing import Set
 import numpy as np
 import random
 
-from ..helpers import get_route_arcs
-from ..models.vehicle_model import VehicleModel
 from .ant_solution import AntSolution
 
 
@@ -13,7 +10,7 @@ class FreeAnt:
         nodes,
         lst_demands,
         matrix_probabilities,
-        maxtrix_pheromones,
+        matrix_pheromones,
         matrix_heuristics,
         matrix_costs,
         max_capacity,
@@ -23,7 +20,7 @@ class FreeAnt:
     ):
         self.lst_demands = lst_demands
         self.matrix_probabilities = matrix_probabilities
-        self.matrix_pheromones = maxtrix_pheromones
+        self.matrix_pheromones = matrix_pheromones
         self.matrix_heuristics = matrix_heuristics
         self.matrix_costs = matrix_costs
         self.max_capacity = max_capacity
@@ -32,6 +29,9 @@ class FreeAnt:
         self.problem_model = problem_model
         self.depot = nodes[0]
         self.clients = set(nodes[1:])
+        self.depot_cost = self.problem_model.get_cost_between_two_nodes(
+            self.depot, self.depot, self.matrix_costs
+        )
 
     def set_probabilities_matrix(self, probabilities_matrix):
         self.matrix_probabilities = probabilities_matrix
@@ -45,16 +45,6 @@ class FreeAnt:
     def set_best_start_nodes(self, best_start_nodes):
         self.best_start_nodes = best_start_nodes
 
-    def choose_next_node_classic(self, actual_node, valid_nodes):
-        prob_matrix = (
-            self.matrix_pheromones[actual_node][valid_nodes]
-            * self.matrix_heuristics[actual_node][valid_nodes]
-        )
-        probs = prob_matrix / prob_matrix.sum()
-
-        # return np.random.choice(valid_nodes, size=1, p=probs)[0]
-        return random.choices(valid_nodes, weights=probs, k=1)[0]
-
     def choose_next_node(self, actual_node, valid_nodes):
         prob_of_nodes = self.matrix_probabilities[actual_node][valid_nodes]
 
@@ -62,41 +52,27 @@ class FreeAnt:
             return random.choices(valid_nodes, weights=prob_of_nodes, k=1)[0]
 
         if random.random() <= self.q0:
-            return valid_nodes[prob_of_nodes.argmax()]
+            return valid_nodes[np.argmax(prob_of_nodes)]
         else:
             return random.choices(valid_nodes, weights=prob_of_nodes, k=1)[0]
 
-            # probs = prob_of_nodes / prob_of_nodes.sum()
-
-            # return random.choices(valid_nodes, prob_of_nodes, k=1)[0]
-            # probs = 1 - prob_of_nodes
-            # return np.random.choice(valid_nodes, size=1, p=probs)[0]
-
-    def get_valid_nodes(self, unvisited_nodes, vehicle: VehicleModel):
+    def get_valid_nodes(self, unvisited_nodes, vehicle_load):
+        remaining_capacity = self.max_capacity - vehicle_load
         return [
             node
             for node in unvisited_nodes
-            if vehicle["load"] + self.lst_demands[node]
-            <= vehicle["max_capacity"]
+            if self.lst_demands[node] <= remaining_capacity
         ]
-
-    def get_valid_nodes_sorted_by_distance(
-        self, r, unvisited_nodes, vehicle_load
-    ):
-        valid_nodes = self.get_valid_nodes(unvisited_nodes, vehicle_load)
-
-        return valid_nodes[self.matrix_costs[r][valid_nodes].argsort()]
 
     def generate_route(
         self,
-        unvisited_nodes: Set[int],
-        actual_route: int,
+        unvisited_nodes: set,
         ant_best_start_nodes=None,
     ):
-        r = self.depot
         route = [self.depot]
+        route_arcs = []
         route_cost = 0
-        vehicle: VehicleModel = {"max_capacity": self.max_capacity, "load": 0}
+        vehicle_load = 0
 
         valid_nodes = list(unvisited_nodes)
 
@@ -104,62 +80,57 @@ class FreeAnt:
             np_weights = np.array(ant_best_start_nodes)
             s = valid_nodes[np_weights[valid_nodes].argmax()]
 
-            route_cost += self.problem_model.get_cost_between_two_nodes(
-                r, s, self.matrix_costs
-            )
-            vehicle["load"] += self.lst_demands[s]
+            route_cost += self.matrix_costs[self.depot][s]
+            vehicle_load += self.lst_demands[s]
 
             valid_nodes.remove(s)
 
             route.append(s)
-            r = s
+            route_arcs.append((self.depot, s))
 
         while valid_nodes:
-            s = self.choose_next_node(r, valid_nodes)
-            # s = self.choose_next_node_classic(r, valid_nodes)
+            s = self.choose_next_node(route[-1], valid_nodes)
 
-            route_cost += self.problem_model.get_cost_between_two_nodes(
-                r, s, self.matrix_costs
-            )
+            route_cost += self.matrix_costs[route[-1]][s]
 
-            vehicle["load"] += self.lst_demands[s]
+            vehicle_load += self.lst_demands[s]
 
             valid_nodes.remove(s)
-            valid_nodes = self.get_valid_nodes(valid_nodes, vehicle)
+            valid_nodes = self.get_valid_nodes(valid_nodes, vehicle_load)
 
             route.append(s)
-            r = s
+            route_arcs.append((route[-2], s))
 
         route.append(self.depot)
-        route_cost += self.problem_model.get_cost_between_two_nodes(
-            r, self.depot, self.matrix_costs
-        )
+        route_arcs.append((route[-2], self.depot))
+        route_cost += self.matrix_costs[route[-2]][self.depot]
 
-        return route, route_cost, vehicle["load"]
+        return route, route_arcs, route_cost, vehicle_load
 
-    def generate_solution(self, ant_best_start_nodes=[]) -> AntSolution:
-        routes = []
-        costs = []
-        loads = []
+    def generate_solution(self, ant_best_start_nodes=None) -> AntSolution:
+        solution = {
+            "cost": np.inf,
+            "routes_arcs": [],
+            "routes_arcs_flatten": [],
+            "routes_costs": [],
+            "routes_loads": [],
+            "routes": [],
+        }
+
         unvisited_nodes = self.clients.copy()
 
         while unvisited_nodes:
-            route, cost, vehicle_load = self.generate_route(
-                unvisited_nodes, len(routes), ant_best_start_nodes
+            route, route_arcs, route_cost, route_load = self.generate_route(
+                unvisited_nodes, ant_best_start_nodes
             )
 
-            routes.append(route)
-            costs.append(cost)
-            loads.append(vehicle_load)
+            solution["routes"].append(route)
+            solution["routes_arcs"].append(route_arcs)
+            solution["routes_arcs_flatten"].extend(route_arcs)
+            solution["routes_costs"].append(route_cost)
+            solution["routes_loads"].append(route_load)
 
             unvisited_nodes.difference_update(route)
 
-        return {
-            "cost": sum(costs),
-            "routes_arcs": [
-                np.array(get_route_arcs(route)) for route in routes
-            ],
-            "routes_costs": costs,
-            "routes_loads": loads,
-            "routes": routes,
-        }
+        solution["cost"] = sum(solution["routes_costs"])
+        return solution
