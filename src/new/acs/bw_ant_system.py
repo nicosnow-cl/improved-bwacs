@@ -66,6 +66,9 @@ class BWAS(MMAS):
 
         pheromones_matrix_copy = pheromones_matrix.copy()
 
+        # print(curr_worst_solution_arcs_flatten)
+        # print(gb_solution_arcs_flatten)
+
         for arc in curr_worst_solution_arcs_flatten:
             if arc not in gb_solution_arcs_flatten:
                 pheromones_matrix_copy[arc] *= (
@@ -289,6 +292,7 @@ class BWAS(MMAS):
         greedy_ant_best_solution: AntSolution = {
             "cost": np.inf,
             "routes_arcs": [],
+            "routes_arcs_flatten": [],
             "routes_costs": [],
             "routes_loads": [],
             "routes": [],
@@ -373,6 +377,7 @@ class BWAS(MMAS):
         global_best_solution: AntSolution = {
             "cost": np.inf,
             "routes_arcs": [],
+            "routes_arcs_flatten": [],
             "routes_costs": [],
             "routes_loads": [],
             "routes": [],
@@ -478,6 +483,7 @@ class BWAS(MMAS):
                 iteration_best_solution: AntSolution = {
                     "cost": np.inf,
                     "routes_arcs": [],
+                    "routes_arcs_flatten": [],
                     "routes_costs": [],
                     "routes_loads": [],
                     "routes": [],
@@ -617,11 +623,11 @@ class BWAS(MMAS):
 
                     # Penalize pheromones matrix by worst solution
                     start_time_penalize = time.time()
-                    self.matrix_pheromones = self.penalize_pheromones_matrix(
-                        self.matrix_pheromones,
-                        global_best_solution["routes_arcs_flatten"],
-                        iteration_worst_solution["routes_arcs_flatten"],
-                    )
+                    # self.matrix_pheromones = self.penalize_pheromones_matrix(
+                    #     self.matrix_pheromones,
+                    #     global_best_solution["routes_arcs_flatten"],
+                    #     iteration_worst_solution["routes_arcs_flatten"],
+                    # )
                     # print("Penalize time: ", time.time() - start_time_penalize)
 
                     # Update pheromone matrix

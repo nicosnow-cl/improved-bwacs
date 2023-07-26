@@ -231,14 +231,16 @@ class MMAS(ACS):
 
         # Greedy ants to find the best initial solution
         greedy_ant = self.model_ant(
-            self.nodes,
-            self.demands,
-            self.matrix_probabilities,
-            self.matrix_costs,
-            self.max_capacity,
-            self.tare,
-            self.model_problem,
-            self.q0,
+            nodes=self.nodes,
+            lst_demands=self.demands,
+            matrix_probabilities=self.matrix_probabilities.copy(),
+            matrix_pheromones=self.matrix_pheromones.copy(),
+            matrix_heuristics=self.matrix_heuristics.copy(),
+            matrix_costs=self.matrix_costs.copy(),
+            max_capacity=self.max_capacity,
+            tare=self.tare,
+            problem_model=self.model_problem,
+            q0=self.q0,
         )
 
         greedy_ant_best_solution: AntSolution = {
@@ -279,14 +281,16 @@ class MMAS(ACS):
 
         # Create ants
         ant = self.model_ant(
-            self.nodes,
-            self.demands,
-            self.matrix_probabilities.copy(),
-            self.matrix_costs,
-            self.max_capacity,
-            self.tare,
-            self.model_problem,
-            self.q0,
+            nodes=self.nodes,
+            lst_demands=self.demands,
+            matrix_probabilities=self.matrix_probabilities.copy(),
+            matrix_pheromones=self.matrix_pheromones.copy(),
+            matrix_heuristics=self.matrix_heuristics.copy(),
+            matrix_costs=self.matrix_costs.copy(),
+            max_capacity=self.max_capacity,
+            tare=self.tare,
+            problem_model=self.model_problem,
+            q0=self.q0,
         )
 
         # Set iteration local search method
@@ -609,6 +613,7 @@ class MMAS(ACS):
                     self.beta,
                 )
                 ant.set_probabilities_matrix(self.matrix_probabilities.copy())
+                ant.set_pheromones_matrix(self.matrix_pheromones.copy())
 
                 # Append iteration best solution to list of best solutions
                 best_solutions.append(iteration_best_solution)

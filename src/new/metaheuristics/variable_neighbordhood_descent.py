@@ -21,6 +21,7 @@ from ..helpers import (
     check_if_route_load_is_valid,
     get_route_load,
     get_route_arcs,
+    get_flattened_list,
     # get_ls_max_time,
 )
 
@@ -315,6 +316,9 @@ class VariableNeighborhoodDescent(GeneralVNS):
             "routes_arcs": [
                 np.array(get_route_arcs(route)) for route in best_solution
             ],
+            "routes_arcs_flatten": get_flattened_list(
+                [get_route_arcs(route) for route in best_solution]
+            ),
             "routes_costs": best_costs,
             "routes_loads": [
                 get_route_load(route, self.lst_demands)
