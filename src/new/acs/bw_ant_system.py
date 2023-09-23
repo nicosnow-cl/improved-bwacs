@@ -623,11 +623,11 @@ class BWAS(MMAS):
 
                     # Penalize pheromones matrix by worst solution
                     start_time_penalize = time.time()
-                    # self.matrix_pheromones = self.penalize_pheromones_matrix(
-                    #     self.matrix_pheromones,
-                    #     global_best_solution["routes_arcs_flatten"],
-                    #     iteration_worst_solution["routes_arcs_flatten"],
-                    # )
+                    self.matrix_pheromones = self.penalize_pheromones_matrix(
+                        self.matrix_pheromones,
+                        global_best_solution["routes_arcs_flatten"],
+                        iteration_worst_solution["routes_arcs_flatten"],
+                    )
                     # print("Penalize time: ", time.time() - start_time_penalize)
 
                     # Update pheromone matrix
