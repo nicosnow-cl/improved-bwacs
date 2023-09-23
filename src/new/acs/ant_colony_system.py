@@ -58,30 +58,33 @@ class ACS(AS):
 
         # Starting initial matrixes
         self.matrix_pheromones = self.create_pheromones_matrix(
-            self.t_max, self.lst_clusters
+            initial_pheromones=self.t_max, lst_clusters=self.lst_clusters
         )
         self.matrix_probabilities = self.create_probabilities_matrix(
-            self.matrix_pheromones.copy(),
-            self.matrix_heuristics.copy(),
+            self.matrix_pheromones,
+            self.matrix_heuristics,
+            self.inv_matrix_costs,
             self.alpha,
             self.beta,
         )
-
         # Greedy ants to find the best initial solution
         greedy_ant = self.model_ant(
-            self.nodes,
-            self.demands,
-            self.matrix_probabilities,
-            self.matrix_costs,
-            self.max_capacity,
-            self.tare,
-            self.model_problem,
-            self.q0,
+            nodes=self.nodes,
+            lst_demands=self.demands,
+            matrix_probabilities=self.matrix_probabilities,
+            matrix_pheromones=self.matrix_pheromones,
+            matrix_heuristics=self.matrix_heuristics,
+            matrix_costs=self.matrix_costs,
+            max_capacity=self.max_capacity,
+            tare=self.tare,
+            problem_model=self.model_problem,
+            q0=self.q0,
         )
 
         greedy_ant_best_solution: AntSolution = {
             "cost": np.inf,
             "routes_arcs": [],
+            "routes_arcs_flatten": [],
             "routes_costs": [],
             "routes_loads": [],
             "routes": [],
@@ -94,27 +97,30 @@ class ACS(AS):
             (len(self.nodes) - 1) * greedy_ant_best_solution["cost"]
         )
 
-        # Create real pheromones matrix
+        # Starting initial matrixes
         self.matrix_pheromones = self.create_pheromones_matrix(
-            self.t_max, self.lst_clusters
+            initial_pheromones=self.t_max, lst_clusters=self.lst_clusters
         )
         self.matrix_probabilities = self.create_probabilities_matrix(
-            self.matrix_pheromones.copy(),
-            self.matrix_heuristics.copy(),
+            self.matrix_pheromones,
+            self.matrix_heuristics,
+            self.inv_matrix_costs,
             self.alpha,
             self.beta,
         )
 
         # Create ants
         ant = self.model_ant(
-            self.nodes,
-            self.demands,
-            self.matrix_probabilities.copy(),
-            self.matrix_costs,
-            self.max_capacity,
-            self.tare,
-            self.model_problem,
-            self.q0,
+            nodes=self.nodes,
+            lst_demands=self.demands,
+            matrix_probabilities=self.matrix_probabilities,
+            matrix_pheromones=self.matrix_pheromones,
+            matrix_heuristics=self.matrix_heuristics,
+            matrix_costs=self.matrix_costs,
+            max_capacity=self.max_capacity,
+            tare=self.tare,
+            problem_model=self.model_problem,
+            q0=self.q0,
         )
 
         # Set iteration local search method
@@ -139,14 +145,17 @@ class ACS(AS):
         global_best_solution = {
             "cost": np.inf,
             "routes_arcs": [],
+            "routes_arcs_flatten": [],
             "routes_costs": [],
             "routes_loads": [],
             "routes": [],
         }
+        iterations_best_solutions = []
         iterations_mean_costs = []
         iterations_median_costs = []
         iterations_std_costs = []
         iterations_times = []
+        pheromones_matrices = []
         outputs_to_print = []
         start_time = time.time()
 
@@ -160,6 +169,7 @@ class ACS(AS):
                 )
                 pbar.update(1)
 
+                pheromones_matrices.append(self.matrix_pheromones)
                 iterations_solutions = []
 
                 # Generate solutions for each ant and update pheromones matrix
@@ -221,6 +231,7 @@ class ACS(AS):
                 iteration_best_solution = {
                     "cost": np.inf,
                     "routes_arcs": [],
+                    "routes_arcs_flatten": [],
                     "routes_costs": [],
                     "routes_loads": [],
                     "routes": [],
@@ -232,6 +243,8 @@ class ACS(AS):
                     )
                 else:
                     iteration_best_solution = iterations_solutions_sorted[0]
+
+                iterations_best_solutions.append(iteration_best_solution)
 
                 # Calculate relative costs
                 costs_median = np.median(
@@ -268,6 +281,7 @@ class ACS(AS):
                 ls_it_solution = {
                     "cost": np.inf,
                     "routes_arcs": [],
+                    "routes_arcs_flatten": [],
                     "routes_costs": [],
                     "routes_loads": [],
                     "routes": [],
@@ -295,27 +309,27 @@ class ACS(AS):
                     for ant_solution in iterations_solutions:
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones,
-                            ant_solution["routes_arcs"],
+                            ant_solution["routes_arcs_flatten"],
                             ant_solution["cost"],
                             self.rho,
                         )
                 elif self.type_pheromones_update == "it_best":
                     self.matrix_pheromones = self.add_pheromones_to_matrix(
                         self.matrix_pheromones,
-                        iteration_best_solution["routes_arcs"],
+                        iteration_best_solution["routes_arcs_flatten"],
                         iteration_best_solution["cost"],
                     )
                 elif self.type_pheromones_update == "g_best":
                     self.matrix_pheromones = self.add_pheromones_to_matrix(
                         self.matrix_pheromones,
-                        global_best_solution["routes_arcs"],
+                        global_best_solution["routes_arcs_flatten"],
                         global_best_solution["cost"],
                     )
                 elif self.type_pheromones_update == "pseudo_g_best":
-                    if random.random() < 0.75:
+                    if random() < 0.75:
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones,
-                            iteration_best_solution["routes_arcs"],
+                            iteration_best_solution["routes_arcs_flatten"],
                             iteration_best_solution["cost"],
                             max(
                                 self.rho,
@@ -328,13 +342,13 @@ class ACS(AS):
                     else:
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones,
-                            global_best_solution["routes_arcs"],
+                            global_best_solution["routes_arcs_flatten"],
                             global_best_solution["cost"],
                         )
                 else:
                     raise Exception("Invalid pheromones update type")
 
-                # Evaporate pheromones
+                # Evaporate pheromones matrix
                 self.matrix_pheromones = self.evaporate_pheromones_matrix(
                     self.matrix_pheromones, self.evaporation_rate
                 )
@@ -342,18 +356,19 @@ class ACS(AS):
                 # Apply bounds to pheromones matrix
                 self.matrix_pheromones = (
                     self.apply_bounds_to_pheromones_matrix(
-                        self.t_min, self.t_max
+                        self.matrix_pheromones, self.t_min, self.t_max
                     )
                 )
 
                 # Update probabilities matrix
                 self.matrix_probabilities = self.create_probabilities_matrix(
-                    self.matrix_pheromones.copy(),
-                    self.matrix_heuristics.copy(),
+                    self.matrix_pheromones,
+                    self.matrix_heuristics,
+                    self.inv_matrix_costs,
                     self.alpha,
                     self.beta,
                 )
-                ant.set_probabilities_matrix(self.matrix_probabilities.copy())
+                ant.set_probabilities_matrix(self.matrix_probabilities)
 
                 # Append iteration best solution to list of best solutions
                 best_solutions.append(iteration_best_solution)
@@ -365,7 +380,7 @@ class ACS(AS):
                 # Update candidate nodes weights
                 if self.type_candidate_nodes is not None:
                     candidate_nodes_weights = self.get_candidate_nodes_weight(
-                        best_solutions, self.type_candidate_nodes
+                        [global_best_solution], self.type_candidate_nodes
                     )
 
                 # Print results
@@ -415,9 +430,11 @@ class ACS(AS):
         return {
             "best_solutions": best_solutions,
             "global_best_solution": global_best_solution,
+            "iterations_best_solutions": iterations_best_solutions,
             "iterations_mean_costs": iterations_mean_costs,
             "iterations_median_costs": iterations_median_costs,
             "iterations_std_costs": iterations_std_costs,
             "iterations_times": iterations_times,
+            "pheromones_matrices": pheromones_matrices,
             "total_time": time_elapsed,
         }

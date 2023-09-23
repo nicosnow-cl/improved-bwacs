@@ -1,4 +1,3 @@
-from copy import deepcopy
 from math import ceil
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
@@ -35,6 +34,7 @@ class AS:
     matrix_heuristics: np.ndarray
     matrix_pheromones: np.ndarray
     matrix_probabilities: np.ndarray
+    inv_matrix_costs: np.ndarray
     max_capacity: float
     max_iterations: int
     model_ant: Any
@@ -71,6 +71,12 @@ class AS:
         self.type_probabilities_matrix = "classic"
 
         self.__dict__.update(kwargs)
+
+        self.inv_matrix_costs = (
+            get_inversed_matrix(self.matrix_costs)
+            if self.matrix_costs is not None
+            else None
+        )
 
     def print_intance_parameters(self):
         print("\nPARAMETERS")
@@ -279,6 +285,7 @@ class AS:
         self,
         pheromones_matrix: np.ndarray,
         heuristics_matrix: np.ndarray,
+        inv_costs_matrix: np.ndarray,
         alpha: float = 1.0,
         beta: float = 1.0,
     ) -> np.ndarray:
@@ -297,35 +304,28 @@ class AS:
         """
 
         pheromones_matrix_copy = pheromones_matrix.copy()
-        heuristics_matrix_copy = heuristics_matrix.copy()
-
-        # print(pheromones_matrix_copy)
-        # print(heuristics_matrix_copy)
 
         if self.type_probabilities_matrix == "classic":
-            matrix = pheromones_matrix_copy**alpha * heuristics_matrix_copy
-            return matrix
-            # return matrix / matrix.sum()
+            probabilities_matrix = (
+                pheromones_matrix_copy**alpha * heuristics_matrix
+            )
+            # return probabilities_matrix
+            return probabilities_matrix / probabilities_matrix.sum()
         else:
-            inv_distances_matrix = get_inversed_matrix(self.matrix_costs)
-            min_not_zero_value = inv_distances_matrix[
-                inv_distances_matrix != 0
-            ].min()
-            max_value = inv_distances_matrix[
-                inv_distances_matrix != np.inf
-            ].max()
+            min_not_zero_value = inv_costs_matrix[inv_costs_matrix != 0].min()
+            max_value = inv_costs_matrix[inv_costs_matrix != np.inf].max()
 
-            # Here we normalice the values between min distance
-            # and max distance.
             scaler = MinMaxScaler(
                 feature_range=(min_not_zero_value, max_value)
             )
             norm_matrix_pheromones = scaler.fit_transform(
                 pheromones_matrix_copy
             )
-            matrix = norm_matrix_pheromones**alpha * heuristics_matrix_copy
+            probabilities_matrix = (
+                norm_matrix_pheromones**alpha * heuristics_matrix
+            )
 
-            return matrix / matrix.sum()
+            return probabilities_matrix / probabilities_matrix.sum()
 
     def get_candidate_nodes_weight(
         self, solutions: List[AntSolution], type: str = "best"
@@ -469,8 +469,9 @@ class AS:
             initial_pheromones=self.t_max, lst_clusters=self.lst_clusters
         )
         self.matrix_probabilities = self.create_probabilities_matrix(
-            self.matrix_pheromones.copy(),
-            self.matrix_heuristics.copy(),
+            self.matrix_pheromones,
+            self.matrix_heuristics,
+            self.inv_matrix_costs,
             self.alpha,
             self.beta,
         )
@@ -479,10 +480,10 @@ class AS:
         ant = self.model_ant(
             nodes=self.nodes,
             lst_demands=self.demands,
-            matrix_probabilities=self.matrix_probabilities.copy(),
-            matrix_pheromones=self.matrix_pheromones.copy(),
-            matrix_heuristics=self.matrix_heuristics.copy(),
-            matrix_costs=self.matrix_costs.copy(),
+            matrix_probabilities=self.matrix_probabilities,
+            matrix_pheromones=self.matrix_pheromones,
+            matrix_heuristics=self.matrix_heuristics,
+            matrix_costs=self.matrix_costs,
             max_capacity=self.max_capacity,
             tare=self.tare,
             problem_model=self.model_problem,
@@ -534,7 +535,7 @@ class AS:
                 )
                 pbar.update(1)
 
-                pheromones_matrices.append(deepcopy(self.matrix_pheromones))
+                pheromones_matrices.append(self.matrix_pheromones)
                 iterations_solutions = []
 
                 # Generate solutions for each ant and update pheromones matrix
@@ -573,9 +574,7 @@ class AS:
                 else:
                     iteration_best_solution = iterations_solutions_sorted[0]
 
-                iterations_best_solutions.append(
-                    iteration_best_solution.copy()
-                )
+                iterations_best_solutions.append(iteration_best_solution)
 
                 # Calculate relative costs
                 costs_median = np.median(
@@ -643,19 +642,19 @@ class AS:
                 if self.type_pheromones_update == "all_ants":
                     for ant_solution in iterations_solutions:
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
-                            self.matrix_pheromones.copy(),
+                            self.matrix_pheromones,
                             ant_solution["routes_arcs_flatten"],
                             ant_solution["cost"],
                         )
                 elif self.type_pheromones_update == "it_best":
                     self.matrix_pheromones = self.add_pheromones_to_matrix(
-                        self.matrix_pheromones.copy(),
+                        self.matrix_pheromones,
                         iteration_best_solution["routes_arcs_flatten"],
                         iteration_best_solution["cost"],
                     )
                 elif self.type_pheromones_update == "g_best":
                     self.matrix_pheromones = self.add_pheromones_to_matrix(
-                        self.matrix_pheromones.copy(),
+                        self.matrix_pheromones,
                         global_best_solution["routes_arcs_flatten"],
                         global_best_solution["cost"],
                     )
@@ -684,24 +683,25 @@ class AS:
 
                 # Evaporate pheromones matrix
                 self.matrix_pheromones = self.evaporate_pheromones_matrix(
-                    self.matrix_pheromones.copy(), self.evaporation_rate
+                    self.matrix_pheromones, self.evaporation_rate
                 )
 
                 # Apply bounds to pheromones matrix
                 self.matrix_pheromones = (
                     self.apply_bounds_to_pheromones_matrix(
-                        self.matrix_pheromones.copy(), self.t_min, self.t_max
+                        self.matrix_pheromones, self.t_min, self.t_max
                     )
                 )
 
                 # Update probabilities matrix
                 self.matrix_probabilities = self.create_probabilities_matrix(
-                    self.matrix_pheromones.copy(),
-                    self.matrix_heuristics.copy(),
+                    self.matrix_pheromones,
+                    self.matrix_heuristics,
+                    self.inv_matrix_costs,
                     self.alpha,
                     self.beta,
                 )
-                ant.set_probabilities_matrix(self.matrix_probabilities.copy())
+                ant.set_probabilities_matrix(self.matrix_probabilities)
 
                 # Append iteration best solution to list of best solutions
                 best_solutions.append(iteration_best_solution)

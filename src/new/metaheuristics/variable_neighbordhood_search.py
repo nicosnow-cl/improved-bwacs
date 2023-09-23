@@ -9,6 +9,7 @@ from ..helpers import (
     get_route_load,
     get_route_arcs,
     get_ls_max_time,
+    get_flattened_list,
 )
 
 
@@ -303,6 +304,9 @@ class GeneralVNS:
             "routes_arcs": [
                 np.array(get_route_arcs(route)) for route in best_solution
             ],
+            "routes_arcs_flatten": get_flattened_list(
+                [get_route_arcs(route) for route in best_solution]
+            ),
             "routes_costs": best_solution_costs,
             "routes_loads": [
                 get_route_load(route, self.lst_demands)
