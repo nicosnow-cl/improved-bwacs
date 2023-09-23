@@ -644,13 +644,13 @@ class AS:
                     for ant_solution in iterations_solutions:
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones.copy(),
-                            ant_solution["routes_arcs"],
+                            ant_solution["routes_arcs_flatten"],
                             ant_solution["cost"],
                         )
                 elif self.type_pheromones_update == "it_best":
                     self.matrix_pheromones = self.add_pheromones_to_matrix(
                         self.matrix_pheromones.copy(),
-                        iteration_best_solution["routes_arcs"],
+                        iteration_best_solution["routes_arcs_flatten"],
                         iteration_best_solution["cost"],
                     )
                 elif self.type_pheromones_update == "g_best":
@@ -663,7 +663,7 @@ class AS:
                     if random.random() < 0.75:
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones,
-                            iteration_best_solution["routes_arcs"],
+                            iteration_best_solution["routes_arcs_flatten"],
                             iteration_best_solution["cost"],
                             max(
                                 self.rho,
@@ -676,7 +676,7 @@ class AS:
                     else:
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
                             self.matrix_pheromones,
-                            global_best_solution["routes_arcs"],
+                            global_best_solution["routes_arcs_flatten"],
                             global_best_solution["cost"],
                         )
                 else:
