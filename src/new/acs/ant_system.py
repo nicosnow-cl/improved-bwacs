@@ -1,3 +1,4 @@
+from copy import deepcopy
 from math import ceil
 from sklearn.preprocessing import MinMaxScaler
 from tqdm import tqdm
@@ -298,6 +299,9 @@ class AS:
         pheromones_matrix_copy = pheromones_matrix.copy()
         heuristics_matrix_copy = heuristics_matrix.copy()
 
+        # print(pheromones_matrix_copy)
+        # print(heuristics_matrix_copy)
+
         if self.type_probabilities_matrix == "classic":
             matrix = pheromones_matrix_copy**alpha * heuristics_matrix_copy
             return matrix
@@ -413,7 +417,10 @@ class AS:
                 else:
                     return random.uniform(min_value, middle_value)
 
-            return [[get_ranking(node) for node in self.nodes]]
+            return [
+                [get_ranking(node) for node in self.nodes]
+                for _ in range(self.ants_num)
+            ]
 
     def print_results(
         self, outputs_to_print: List[List[str]], max_saved_outputs: int = 5
@@ -470,13 +477,15 @@ class AS:
 
         # Create ants
         ant = self.model_ant(
-            self.nodes,
-            self.demands,
-            self.matrix_probabilities.copy(),
-            self.matrix_costs,
-            self.max_capacity,
-            self.tare,
-            self.model_problem,
+            nodes=self.nodes,
+            lst_demands=self.demands,
+            matrix_probabilities=self.matrix_probabilities.copy(),
+            matrix_pheromones=self.matrix_pheromones.copy(),
+            matrix_heuristics=self.matrix_heuristics.copy(),
+            matrix_costs=self.matrix_costs.copy(),
+            max_capacity=self.max_capacity,
+            tare=self.tare,
+            problem_model=self.model_problem,
         )
 
         # Set iteration local search method
@@ -501,14 +510,17 @@ class AS:
         global_best_solution: AntSolution = {
             "cost": np.inf,
             "routes_arcs": [],
+            "routes_arcs_flatten": [],
             "routes_costs": [],
             "routes_loads": [],
             "routes": [],
         }
+        iterations_best_solutions = []
         iterations_mean_costs = []
         iterations_median_costs = []
         iterations_std_costs = []
         iterations_times = []
+        pheromones_matrices = []
         outputs_to_print = []
         start_time = time.time()
 
@@ -522,6 +534,7 @@ class AS:
                 )
                 pbar.update(1)
 
+                pheromones_matrices.append(deepcopy(self.matrix_pheromones))
                 iterations_solutions = []
 
                 # Generate solutions for each ant and update pheromones matrix
@@ -559,6 +572,10 @@ class AS:
                     )
                 else:
                     iteration_best_solution = iterations_solutions_sorted[0]
+
+                iterations_best_solutions.append(
+                    iteration_best_solution.copy()
+                )
 
                 # Calculate relative costs
                 costs_median = np.median(
@@ -626,20 +643,20 @@ class AS:
                 if self.type_pheromones_update == "all_ants":
                     for ant_solution in iterations_solutions:
                         self.matrix_pheromones = self.add_pheromones_to_matrix(
-                            self.matrix_pheromones,
+                            self.matrix_pheromones.copy(),
                             ant_solution["routes_arcs"],
                             ant_solution["cost"],
                         )
                 elif self.type_pheromones_update == "it_best":
                     self.matrix_pheromones = self.add_pheromones_to_matrix(
-                        self.matrix_pheromones,
+                        self.matrix_pheromones.copy(),
                         iteration_best_solution["routes_arcs"],
                         iteration_best_solution["cost"],
                     )
                 elif self.type_pheromones_update == "g_best":
                     self.matrix_pheromones = self.add_pheromones_to_matrix(
-                        self.matrix_pheromones,
-                        global_best_solution["routes_arcs"],
+                        self.matrix_pheromones.copy(),
+                        global_best_solution["routes_arcs_flatten"],
                         global_best_solution["cost"],
                     )
                 elif self.type_pheromones_update == "pseudo_g_best":
@@ -667,13 +684,13 @@ class AS:
 
                 # Evaporate pheromones matrix
                 self.matrix_pheromones = self.evaporate_pheromones_matrix(
-                    self.matrix_pheromones, self.evaporation_rate
+                    self.matrix_pheromones.copy(), self.evaporation_rate
                 )
 
                 # Apply bounds to pheromones matrix
                 self.matrix_pheromones = (
                     self.apply_bounds_to_pheromones_matrix(
-                        self.t_min, self.t_max
+                        self.matrix_pheromones.copy(), self.t_min, self.t_max
                     )
                 )
 
@@ -696,7 +713,7 @@ class AS:
                 # Update candidate nodes weights
                 if self.type_candidate_nodes is not None:
                     candidate_nodes_weights = self.get_candidate_nodes_weight(
-                        best_solutions, self.type_candidate_nodes
+                        [global_best_solution], self.type_candidate_nodes
                     )
 
                 # Print results
@@ -746,9 +763,11 @@ class AS:
         return {
             "best_solutions": best_solutions,
             "global_best_solution": global_best_solution,
+            "iterations_best_solutions": iterations_best_solutions,
             "iterations_mean_costs": iterations_mean_costs,
             "iterations_median_costs": iterations_median_costs,
             "iterations_std_costs": iterations_std_costs,
             "iterations_times": iterations_times,
+            "pheromones_matrices": pheromones_matrices,
             "total_time": time_elapsed,
         }
