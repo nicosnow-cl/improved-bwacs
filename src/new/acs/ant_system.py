@@ -72,12 +72,6 @@ class AS:
 
         self.__dict__.update(kwargs)
 
-        self.inv_matrix_costs = (
-            get_inversed_matrix(self.matrix_costs)
-            if self.matrix_costs is not None
-            else None
-        )
-
     def print_intance_parameters(self):
         print("\nPARAMETERS")
         print("----------------------------------------")
@@ -364,16 +358,12 @@ class AS:
 
             return ants_weights
         else:
-            costs = self.matrix_costs[0][all_clients]
-            inv_costs = [1 / cost if cost != 0 else 0 for cost in costs]
-            prob_matrix = [
-                inv_cost / sum(inv_costs[:half_clients_length])
-                for inv_cost in inv_costs[:half_clients_length]
-            ]
+            inv_costs = self.inv_matrix_costs[0][all_clients]
+            prob_matrix = inv_costs / inv_costs.sum()
 
             closest_nodes = set(
                 random.choices(
-                    all_clients[:half_clients_length],
+                    all_clients,
                     weights=prob_matrix,
                     k=max(ceil(len(all_clients) * 0.3), 10),
                 )
@@ -392,7 +382,7 @@ class AS:
                     for cluster in clusters:
                         nodes_num = ceil(len(cluster) * 0.3)
                         cluster_nodes_sorted = sorted(
-                            cluster, key=lambda x: costs[x - 1]
+                            cluster, key=lambda x: self.matrix_costs[x - 1]
                         )
                         best_clusters_nodes.update(
                             cluster_nodes_sorted[:nodes_num]
@@ -465,6 +455,11 @@ class AS:
             raise Exception(errors)
 
         # Starting initial matrixes
+        self.inv_matrix_costs = (
+            get_inversed_matrix(self.matrix_costs)
+            if self.matrix_costs is not None
+            else None
+        )
         self.matrix_pheromones = self.create_pheromones_matrix(
             initial_pheromones=self.t_max, lst_clusters=self.lst_clusters
         )
@@ -546,7 +541,7 @@ class AS:
                         )
                     else:
                         ant_solution = ant.generate_solution()
-                    iterations_solutions.append(ant_solution)
+                    iterations_solutions.append(ant_solution.copy())
 
                 # Sort solutions by fitness and filter by k_optimal
                 iterations_solutions_sorted = sorted(
@@ -562,6 +557,7 @@ class AS:
                 iteration_best_solution = {
                     "cost": np.inf,
                     "routes_arcs": [],
+                    "routes_arcs_flatten": [],
                     "routes_costs": [],
                     "routes_loads": [],
                     "routes": [],
@@ -574,7 +570,9 @@ class AS:
                 else:
                     iteration_best_solution = iterations_solutions_sorted[0]
 
-                iterations_best_solutions.append(iteration_best_solution)
+                iterations_best_solutions.append(
+                    iteration_best_solution.copy()
+                )
 
                 # Calculate relative costs
                 costs_median = np.median(
@@ -616,6 +614,7 @@ class AS:
                 ls_it_solution = {
                     "cost": np.inf,
                     "routes_arcs": [],
+                    "routes_arcs_flatten": [],
                     "routes_costs": [],
                     "routes_loads": [],
                     "routes": [],
@@ -631,12 +630,12 @@ class AS:
                 # Update global best solution if LS best solution is better
                 # or iteration best solution is better
                 if ls_it_solution["cost"] < global_best_solution["cost"]:
-                    global_best_solution = ls_it_solution
+                    global_best_solution = ls_it_solution.copy()
                 elif (
                     iteration_best_solution["cost"]
                     < global_best_solution["cost"]
                 ):
-                    global_best_solution = iteration_best_solution
+                    global_best_solution = iteration_best_solution.copy()
 
                 # Update pheromones matrix
                 if self.type_pheromones_update == "all_ants":
